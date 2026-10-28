@@ -6,7 +6,9 @@ filmed gaming-PC shots from Mixkit green-screen clips with the recordings keyed 
 monitor (`track.py`, `pc.py`); redone THEY JOIN lobby; Cinzel/Montserrat type with a single frosted
 glass title; uploaded Quess / CheQuers / BaQugammon logos and the uploaded outro as the end card.
 
-    SC=1 VARIANT=r3 SCENES=scenes3 python3 build_variant.py && python3 mix3.py audio.wav
+    SC=1 VARIANT=r4m R3MODE=mobile SCENES=scenes3 python3 build_variant.py    # phone version
+    SC=1 VARIANT=r4d R3MODE=desktop SCENES=scenes3 python3 build_variant.py   # desktop version (real PC footage only)
+    python3 mix3.py audio.wav
 
 Stock footage (Mixkit free licence): #51602 and #51614 (green-screen gaming setups), #51622 (gaming room).
 

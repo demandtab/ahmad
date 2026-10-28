@@ -92,4 +92,8 @@ def pc_frame(name, t, ui, focus_ui=None, zoom=1.0, angle=0.0, wide=False, focus=
     if wide:
         return band(out, focus=focus, zoom=zoom, angle=angle, dx=dx, dy=dy, bg_dim=0.35), m
     M = affine_cover(pw, ph, focus, zoom, angle, (W, H), dx, dy)
-    return cv2.warpAffine(out, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT), m
+
+    def ui_to_out(pts):   # recording pixel -> output frame pixel
+        p = m(pts)
+        return p @ M[:, :2].T + M[:, 2]
+    return cv2.warpAffine(out, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT), ui_to_out

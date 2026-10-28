@@ -22,13 +22,16 @@ from common import (FPS, H, P, SC, W, band, clip, cover, dir_blur, draw_title, e
 from pc import pc_frame
 
 old.draw_title = lambda *a, **k: None   # captions are driven from this file's single schedule
+MODE = os.environ.get('R3MODE', 'mobile')   # 'mobile' (phones + PC shots) or 'desktop' (no phones anywhere)
+if MODE == 'desktop':
+    old.HOLO_C = (1080, 1180)   # hologram rises above the monitor instead of above a phone
 DURATION = 34.0
 ROOT = common.ROOT
 RED, GREEN, BLUE, WHITE, GOLD = old.RED, old.GREEN, old.BLUE, old.WHITE, old.GOLD
 
 # ------------------------------------------------------------------ captions (one schedule, output clock)
 CAPTIONS = [
-    (('GOT THREE', 'FRIENDS?'), 1.29, 3.42, 900, 230, False),
+    (('GOT THREE', 'FRIENDS?'), 1.29, 3.42, 900, 250, True),
     (('CREATE A', 'PRIVATE ROOM'), 3.62, 8.0, 640, 190, False),
     (('CHOOSE YOUR GAME',), 8.2, 12.58, 620, 150, False),
     (('GET YOUR', 'ROOM CODE'), 12.76, 14.86, 640, 190, False),
@@ -109,7 +112,10 @@ def logo_img(name):
     im = im[ys.min():ys.max() + 1, xs.min():xs.max() + 1]
     s = P(width) / im.shape[1]
     im = cv2.resize(im, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
-    return np.dstack([im[..., [2, 1, 0]], im[..., 3]])
+    rgb = im[..., [2, 1, 0]]
+    if name == 'BaQugammon':   # supplied as black artwork; shown in white like the other two (requested)
+        rgb = np.full_like(rgb, 0.96)
+    return np.dstack([rgb, im[..., 3]])
 
 
 def frosted_card(f, cx, cy, w, h, a):
@@ -168,8 +174,6 @@ def k_choose(t):
         s = 1.08 - 0.08 * e
         img = logo_img(name)
         cy = P(3020)
-        if name == 'BaQugammon':
-            POST.append(lambda fr, a=a, s=s: frosted_card(fr, P(1080), cy, P(1840) * s, P(820) * s, a))
         if tau < 0.18:
             img = cv2.blur(img, (1, max(1, int(P(30) * (1 - e))) * 2 + 1))
         place_post(img, P(1080), cy, s, a)
@@ -409,6 +413,10 @@ def render(t):
         f, warm = k_friends(t)
     else:
         f = k_end(t)
+    return _finish(f, t, warm)
+
+
+def _finish(f, t, warm):
     if 3.48 <= t < 3.7:   # hook push resolves into a flash
         f += 1.1 * math.exp(-abs(t - 3.58) / 0.05)
     dx, dy = shake_at(t)
@@ -421,3 +429,178 @@ def render(t):
     else:
         f = grade(f, t, warm=warm, leak=0.12 if warm else 0.09)
     return flush_post(f)
+
+
+# ================================================================== DESKTOP VERSION (no phones anywhere)
+_M = dict(create=k_create, choose=k_choose, share=k_share, friends=k_friends)   # phone-version shots
+BTN_C = (493, 833)
+
+
+def d_create(t):
+    if t < 4.72:   # tight on the real Private Room screen, a different camera angle of the real setup
+        lt = t - 3.58
+        ui = clip('rec_priv2', 60).at(remap(t, [(3.58, 0.1), (4.72, 1.3)]))
+        f, _ = pc_frame('pc51602', 9.0 + lt, ui, focus_ui=PRIV_FOCUS, zoom=lerp(1.2, 1.45, eio(lt / 1.14)))
+        if t < 3.7:
+            f = dir_blur(f, P(700) * (1 - eo3(seg(t, 3.58, 3.7))), 0, n=7)
+        return f
+    if t < 5.86:
+        return _M['create'](t)
+    # envelope screen: push in on the real monitor toward Create Room, slow-motion click on the 8.15 beat
+    u = eio(seg(t, 5.86, 8.05))
+    abs_t = remap(t, [(5.86, 37.15), (7.0, 39.0), (8.15, 39.675)])
+    ui = clip('rec_env', 60).at(abs_t - 36.0)
+    pulse = 0.55 + 0.35 * math.sin((t - 5.86) * 7.0)
+    ui = old.screen_glow(ui.copy(), old.ENVELOPE, GOLD, 0.35 * pulse, width=26)
+    ui = old.screen_glow(ui, old.SEAL, (0.2, 0.45, 1.0), 0.45 * pulse, width=30, inner=0.25)
+    fu = (lerp(560, BTN_C[0], u), lerp(600, BTN_C[1], u))
+    f, to_out = pc_frame('pc51602', 3.0 + (t - 5.86), ui, focus_ui=fu, zoom=lerp(1.1, 2.0, u))
+    old.atmos(f, t, k=0.4)
+    return f
+
+
+def click_burst(f, t, xy):
+    if t < 8.15 or t > 8.6:
+        return f
+    k = math.exp(-(t - 8.15) / 0.12)
+    lay = np.zeros((H // 4, W // 4, 3), np.float32)
+    cv2.circle(lay, (int(xy[0] / 4), int(xy[1] / 4)), int(P(160) / 4), (0.8, 0.9, 1.0), -1)
+    cv2.ellipse(lay, (int(xy[0] / 4), int(xy[1] / 4)), (int(W * 0.7 / 4), max(1, int(P(14) / 4))), 0, 0, 360,
+                (1.0, 0.85, 0.6), -1)
+    lay = cv2.GaussianBlur(lay, (0, 0), P(18) / 4) + cv2.GaussianBlur(lay, (0, 0), P(90) / 4)
+    return f + cv2.resize(lay, (W, H)) * 2.2 * k + 0.55 * k
+
+
+def d_choose(t):
+    if t < 9.86:
+        f = _M['choose'](t)
+        if t < 8.6:   # the click flash carries over the cut
+            f = click_burst(f, t, (W / 2, P(1920)))
+        return f
+    src = remap(t, [(9.86, 1.34), (12.72, 2.8)])
+    ui = clip('rec_select').at(src)
+    pts = [LOGOS[n][2] for n, _ in LOGO_T]
+    k1, k2 = eio(seg(t, 10.9, 11.1)), eio(seg(t, 12.05, 12.25))
+    fx = lerp(lerp(pts[0][0], pts[1][0], k1), pts[2][0], k2)
+    f, _ = pc_frame('pc51602', 6.6 + (t - 9.86), ui, focus_ui=(fx, 470), zoom=1.55)
+    whip = max(math.exp(-abs(t - 11.0) / 0.05), math.exp(-abs(t - 12.15) / 0.05))
+    if whip > 0.05:
+        f = dir_blur(f, P(500) * whip, 0, n=7)
+    ys = np.linspace(0, 1, H, dtype=np.float32)[:, None, None]
+    f *= 1 - 0.6 * np.clip((ys - 0.62) / 0.2, 0, 1)
+    for i, (name, t0) in enumerate(LOGO_T):
+        t1 = LOGO_T[i + 1][1] - 0.04 if i + 1 < len(LOGO_T) else 12.66
+        if not (t0 <= t < t1 + 0.12):
+            continue
+        tau = t - t0
+        e = 1 - math.exp(-tau / 0.07)
+        a = min(1.0, tau / 0.1) * (1 - eio((t - t1) / 0.12) if t > t1 else 1)
+        img = logo_img(name)
+        if tau < 0.18:
+            img = cv2.blur(img, (1, max(1, int(P(30) * (1 - e))) * 2 + 1))
+        place_post(img, P(1080), P(3020), 1.08 - 0.08 * e, a)
+        if name == 'Quess' and tau > 0.15:
+            place_post(label('4-PLAYER CHESS', 70), P(1080), P(3470), 1.0, a * eo3((tau - 0.15) / 0.2))
+    return f
+
+
+def d_code(t):
+    """The room code lifts off the real monitor as gold particles and settles as a hologram above it."""
+    t_old = remap(t, [(12.72, 12.0), (13.29, 13.14), (14.43, 14.34), (15.0, 15.0)])
+    src = remap(t_old, [(12.0, 0.33), (12.6, 0.93), (15.0, 2.13)])
+    ui = clip('rec_code', 60).at(src)
+    lt = t - 12.72
+    f, to_out = pc_frame('pc51602', 10.0 + lt * 0.8, ui, focus_ui=(800, 520), zoom=lerp(1.02, 1.12, eio(lt / 2.28)),
+                         dy=P(380))
+    if t < 12.84:
+        f += 0.6 * (1 - seg(t, 12.72, 12.84))
+    A = old.holo_assets()
+    cb = old.CODE_BOX
+    box = to_out([(cb[0], cb[1]), (cb[2], cb[1]), (cb[2], cb[3]), (cb[0], cb[3])])
+    hx, hy = P(old.HOLO_C[0]), P(old.HOLO_C[1])
+    kb = eo3(seg(t_old, 12.6, 12.9))
+    if kb > 0:
+        lay = np.zeros((H // 4, W // 4, 3), np.float32)
+        hw = A['w'] / 2
+        poly = np.array([box[0], box[1], (hx + hw, hy + A['h'] * 0.3), (hx - hw, hy + A['h'] * 0.3)]) / 4
+        cv2.fillConvexPoly(lay, poly.astype(np.int32), GOLD, cv2.LINE_AA)
+        f += cv2.resize(cv2.GaussianBlur(lay, (0, 0), P(30) / 4), (W, H)) * 0.16 * kb
+    ci = A['ci']
+    u = np.clip((t_old - (old.CHAR_T0 + ci * old.CHAR_DT + A['jit'] * 0.05)) / old.CHAR_FLY, 0, 1)
+    live = (u > 0) & (u < 1.0)
+    if live.any():
+        s = A['starts']
+        a, b, c, dd = box
+        sx = (a[0] * (1 - s[:, 0]) + b[0] * s[:, 0]) * (1 - s[:, 1]) + (dd[0] * (1 - s[:, 0]) + c[0] * s[:, 0]) * s[:, 1]
+        sy = (a[1] * (1 - s[:, 0]) + b[1] * s[:, 0]) * (1 - s[:, 1]) + (dd[1] * (1 - s[:, 0]) + c[1] * s[:, 0]) * s[:, 1]
+        e = 1 - (1 - u) ** 3
+        x = sx + (A['tx'] - sx) * e + np.sin(u * math.pi) * A['rng_dir'][:, 0] * P(60)
+        y = sy + (A['ty'] - sy) * e - np.sin(u * math.pi) * P(140)
+        inten = (0.9 * (1 - u * 0.6))[:, None] * np.array(GOLD, np.float32)
+        splat(f, x[live], y[live], inten[live])
+    old.draw_holo_crisp(f, old.col_alpha(t_old))
+    return f
+
+
+def d_share(t):
+    if t < 15.86:
+        return _M['share'](t)
+    return old.s_share(remap(t, [(15.86, 15.45), (16.43, 16.02), (16.72, 16.32), (17.0, 16.62), (17.29, 17.0)]))
+
+
+D_CUTS = [   # gameplay on the real PC: start, end, clip, clip time at start, speed, stock clip, stock time, focus, zoom
+    (23.0, 24.15, 'tra', 0.45, 1.5, 'pc51602', 7.2, (0.40, 0.42), 1.25),
+    (24.15, 24.72, 'gp1a', 0.4, 2.0, 'pc51614', 0.2, (0.42, 0.40), 1.08),
+    (24.72, 25.29, 'gp1b', 0.6, 2.0, 'pc51614', 1.6, (0.40, 0.42), 1.12),
+    (25.29, 25.86, 'gp1b', 1.8, 1.6, 'pc51602', 11.0, (0.45, 0.42), 1.2),
+]
+
+
+def d_cut(t, c):
+    t0, t1, name, a0, sp, pcn, pt0, foc, z = c
+    ui = clip(name).at(a0 + (t - t0) * sp)
+    f, _ = pc_frame(pcn, pt0 + (t - t0), ui, focus=foc, zoom=z * (1 + 0.1 * (1 - eo3((t - t0) / 0.2))))
+    return f
+
+
+def d_begin(t):
+    for i, c in enumerate(D_CUTS):
+        if c[0] <= t < c[1] or (i == len(D_CUTS) - 1 and t >= c[0]):
+            f = d_cut(t, c)
+            if i == 0 and t > 23.95:   # the capture smoke wipes into the next shot
+                nxt = d_cut(D_CUTS[1][0] + 0.001, D_CUTS[1])
+                k = eio(seg(t, 23.95, 24.15))
+                m = np.clip((f.mean(2) - (0.85 - 0.8 * k)) * 4, 0, 1)
+                m = np.clip(cv2.GaussianBlur(m, (0, 0), P(30))[..., None] * (0.5 + 1.5 * k), 0, 1)
+                f = f * (1 - m) + nxt * m + m * (1 - m) * 1.2
+            break
+    if t < 23.25:
+        f += 1.0 * (1 - eo3(seg(t, 23.0, 23.25)))
+    for tc in (24.15, 24.72, 25.29):
+        if tc <= t < tc + 0.1:
+            f += 0.45 * (1 - (t - tc) / 0.1)
+    old.atmos(f, t, k=0.5)
+    return f
+
+
+def d_friends(t):
+    if 27.0 <= t < 27.57:
+        ui = clip('gp1b').at(1.2 + (t - 27.0) * 1.4)
+        f, _ = pc_frame('pc51602', 8.2 + (t - 27.0), ui, focus=(0.42, 0.42), zoom=1.3 * (1 + 0.12 * (1 - eo3((t - 27.0) / 0.15))))
+        if t < 27.1:
+            f += 0.55 * (1 - (t - 27.0) / 0.1)
+        return f, 0.0
+    if t >= 28.72:   # TRY IT NOW on the real setup, final gameplay hit
+        lt = t - 28.72
+        ui = clip('tra').at(1.05 + lt * 0.7)
+        f, _ = pc_frame('pc51614', 3.4 + lt, ui, focus=(0.42, 0.42), zoom=1.15 * (1 + 0.15 * (1 - eo3(lt / 0.15))))
+        if t < 28.84:
+            f += 0.55 * (1 - lt / 0.12)
+        if t > 29.66:
+            f *= 1 - eio(seg(t, 29.66, 29.86)) * 0.85
+        return f, 0.0
+    return _M['friends'](t)
+
+
+if MODE == 'desktop':
+    k_create, k_choose, k_code, k_share, k_begin, k_friends = d_create, d_choose, d_code, d_share, d_begin, d_friends

@@ -279,12 +279,20 @@ class Device:
         self.dh = self.dw * TH / TW
         self.th = 0.075
 
-    def texture(self, screen):
+    def texture(self, screen, glint=0.0, env=None):
         TW, TH, BZ = self.TW, self.TH, self.BZ
         scr = cv2.resize(screen, (self.SW, self.SH), interpolation=cv2.INTER_AREA if SC < 1 else cv2.INTER_LINEAR)
         full = np.zeros((TH, TW, 3), np.float32)
         full[BZ:BZ + self.SH, BZ:BZ + self.SW] = scr
-        rgb = self.body_rgb * (1 - self.screen_mask) + full * self.screen_mask + self.gloss
+        rgb = self.body_rgb * (1 - self.screen_mask) + full * self.screen_mask
+        if env is not None:   # the room reflected in the cover glass
+            rgb += cv2.resize(env, (TW, TH))[::-1] * 0.07 * self.screen_mask
+        if not hasattr(self, '_dd'):
+            yy, xx = np.mgrid[0:TH, 0:TW].astype(np.float32)
+            self._dd = xx / TW * 0.8 + yy / TH * 0.6
+        d = self._dd - glint
+        gl = (np.exp(-((d - 0.38) / 0.09) ** 2) * 0.06 + np.exp(-((d - 0.55) / 0.025) ** 2) * 0.05)[..., None]
+        rgb = rgb + gl * self.screen_mask
         return np.dstack([rgb, self.body_a])
 
     def corners(self, pose, z_off=0.0, mirror_y=None):
@@ -347,7 +355,7 @@ def device_shot(bg, screen, pose, glow=0.55, refl=0.30, floor=True, rim_light=No
     """Composite the phone (showing `screen`) over `bg`. Returns (frame, homography)."""
     d = device()
     frame = bg.copy()
-    tex = d.texture(screen)
+    tex = d.texture(screen, glint=pose[3] * 0.012, env=cv2.resize(bg, (W // 8, H // 8)) if isinstance(d, Device) and not isinstance(d, Monitor) else None)
     Hm = d.homography(pose)
     warped = cv2.warpPerspective(tex, Hm, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
     a = warped[..., 3:4]
@@ -566,8 +574,8 @@ def draw_title(frame, lines, t, t0, cy, t1=None, size=200, cx=None, shake=10, ac
         amp = P(shake) * math.exp(-k / 0.05)
         ox, oy = ox + amp * math.sin(k * 90), oy + amp * 0.5 * math.cos(k * 77)
     if glass:
-        POST.append(lambda fr, L=tuple(lines), z=size, x=cx + ox, y=cy + oy, sc=s, al=a, bl=blur:
-                    glass_text(fr, L, z, x, y, sc, al, bl))
+        POST.append(lambda fr, L=tuple(lines), z=size, x=cx + ox, y=cy + oy, sc=s, al=a, bl=blur, tu=tau:
+                    glass_text(fr, L, z, x, y, sc, al, bl, tu))
         return
     img, am = title_img(tuple(lines), size, accent=accent)
     if accent:  # the gold rule draws outward after the type lands
@@ -583,9 +591,17 @@ def draw_title(frame, lines, t, t0, cy, t1=None, size=200, cx=None, shake=10, ac
         k = max(1, int(P(40) * blur))
         img = cv2.blur(img, (1, k * 2 + 1))
     POST.append((img, cx + ox, cy + oy, s, a))
+    q = (tau - 0.14) / 0.45
+    if 0 < q < 1.15:   # light catches the type once, left to right
+        h, w = img.shape[:2]
+        d = np.arange(w, dtype=np.float32)[None, :] + np.arange(h, dtype=np.float32)[:, None] * 0.5
+        span = w + h * 0.5
+        band_ = np.exp(-((d - (q * 1.3 - 0.15) * span) / (span * 0.035)) ** 2)
+        shine = np.dstack([np.ones((h, w, 3), np.float32), band_ * np.clip(am * 0 + img[..., 3] * (img[..., :3].mean(2) > 0.5), 0, 1) * 0.55])
+        POST.append((shine, cx + ox, cy + oy, s, a))
 
 
-def glass_text(frame, lines, size, cx, cy, s, a, blur):
+def glass_text(frame, lines, size, cx, cy, s, a, blur, tau=1.0):
     """Frosted glass letters: refract and frost what is behind them, bevel highlight, crisp rim."""
     m, _ = text_mask(tuple(lines), size)
     if s != 1.0:
@@ -615,6 +631,15 @@ def glass_text(frame, lines, size, cx, cy, s, a, blur):
     mm = m[..., None]
     roi[:] = roi * (1 - mm) + glass * mm
     roi += (np.clip(light, 0, 1) * 0.45 - np.clip(-light, 0, 1) * 0.22) * mm + edge * 0.8
+    # a specular band slides across the glass as it lands, then a slow faint shimmer
+    q = (tau - 0.08) / 0.55
+    xs = np.arange(ww, dtype=np.float32)[None, :]
+    ys_ = np.arange(hh, dtype=np.float32)[:, None]
+    d = xs + ys_ * 0.6
+    span = ww + hh * 0.6
+    sweep = np.exp(-((d - (q * 1.3 - 0.15) * span) / (span * 0.05)) ** 2) * (0 < q < 1.2)
+    shimmer = 0.06 * (0.5 + 0.5 * np.sin(d / span * 6.28 - tau * 1.8))
+    roi += ((sweep * 0.75 + shimmer) * m)[..., None]
 
 
 @functools.lru_cache(maxsize=None)

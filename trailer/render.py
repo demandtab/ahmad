@@ -12,7 +12,9 @@ import cv2
 import numpy as np
 
 import common
-import scenes
+import importlib
+
+scenes = importlib.import_module(os.environ.get('SCENES', 'scenes'))
 
 OUT = os.path.join(common.ROOT, 'out')
 os.makedirs(OUT, exist_ok=True)

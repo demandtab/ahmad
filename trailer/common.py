@@ -459,7 +459,7 @@ def font(name, size):
     return ImageFont.truetype(os.path.join(FONTS, name), max(4, int(size)))
 
 
-GOLD_RGB = (212, 176, 96)
+GOLD_RGB = (206, 172, 98)
 POST = []  # text layers composited after the grade so white stays clean white
 
 
@@ -468,71 +468,153 @@ def place_post(img, cx, cy, s=1.0, alpha=1.0):
 
 
 def flush_post(frame):
-    for img, cx, cy, s, a in POST:
-        place(frame, img, cx, cy, s, a)
+    for item in POST:
+        if callable(item):
+            item(frame)
+        else:
+            img, cx, cy, s, a = item
+            place(frame, img, cx, cy, s, a)
     POST.clear()
     return frame
 
 
+HEAD_FONT = 'Cinzel_wght_900.ttf'
+
+
 @functools.lru_cache(maxsize=None)
-def title_img(lines, size=250, font_name='Anton.ttf', gap=14, accent=True, tracking=3):
-    """Premium caption: clean white condensed type, one thin gold accent line, soft dark shadow."""
+def text_mask(lines, size, font_name=HEAD_FONT, tracking=0.06, gap=0.18):
+    """Anti-aliased mask of centred multi-line type with letter-spacing (in em)."""
     f = font(font_name, P(size))
-    g = int(P(gap))
-    tr = P(tracking)
-    boxes = [f.getbbox(t) for t in lines]
-    ws = [int(f.getlength(t) + tr * (len(t) - 1)) for t in lines]
-    asc = [b[1] for b in boxes]
-    cap = max(b[3] - b[1] for b in boxes)
+    tr = P(size) * tracking
+    ws = [sum(f.getlength(ch) for ch in t) + tr * (len(t) - 1) for t in lines]
+    asc, desc = f.getmetrics()
+    cap = f.getbbox('H')[3] - f.getbbox('H')[1]
     line_h = cap
-    acc_gap, acc_h = int(P(34)), max(1, int(P(6)))
-    acc_w = int(min(max(ws) * 0.45, P(340)))
-    marg = int(P(90))
-    Wc = max(ws) + 2 * marg
-    Hc = len(lines) * line_h + (len(lines) - 1) * g + (acc_gap + acc_h if accent else 0) + 2 * marg
-    text = Image.new('L', (Wc, Hc), 0)
-    dt = ImageDraw.Draw(text)
-    for i, (t, w_, a0) in enumerate(zip(lines, ws, asc)):
+    g = int(P(size) * gap)
+    marg = int(P(60))
+    Wc = int(max(ws)) + 2 * marg
+    Hc = len(lines) * line_h + (len(lines) - 1) * g + 2 * marg
+    im = Image.new('L', (Wc, Hc), 0)
+    d = ImageDraw.Draw(im)
+    top_off = f.getbbox('H')[1]
+    for i, (t, w_) in enumerate(zip(lines, ws)):
         x = (Wc - w_) / 2
-        y = marg + i * (line_h + g) - a0
+        y = marg + i * (line_h + g) - top_off
         for ch in t:
-            dt.text((x, y), ch, font=f, fill=255)
+            d.text((x, y), ch, font=f, fill=255)
             x += f.getlength(ch) + tr
-    acc = Image.new('L', (Wc, Hc), 0)
+    return np.asarray(im).astype(np.float32) / 255.0, max(ws)
+
+
+@functools.lru_cache(maxsize=None)
+def title_img(lines, size=200, font_name=HEAD_FONT, accent=True, tracking=0.06, color=(0.97, 0.96, 0.94)):
+    """Premium caption: classical serif caps, refined tracking, one thin gold rule, soft dark shadow."""
+    tm, tw = text_mask(tuple(lines), size, font_name, tracking)
+    h, w = tm.shape
+    acc_gap, acc_h = int(P(size * 0.22)), max(1, int(P(5)))
+    pad_b = acc_gap + acc_h + int(P(10)) if accent else 0
+    tm = np.pad(tm, ((0, pad_b), (0, 0)))
+    am = np.zeros_like(tm)
     if accent:
-        ya = marg + len(lines) * line_h + (len(lines) - 1) * g + acc_gap
-        ImageDraw.Draw(acc).rectangle([(Wc - acc_w) // 2, ya, (Wc + acc_w) // 2, ya + acc_h], fill=255)
-    tm = np.asarray(text).astype(np.float32) / 255.0
-    am = np.asarray(acc).astype(np.float32) / 255.0
+        ya = h - int(P(60)) + acc_gap
+        acc_w = int(min(tw * 0.5, P(420)))
+        am[ya:ya + acc_h, (w - acc_w) // 2:(w + acc_w) // 2] = 1.0
+        # rule tapers at its ends
+        xs = np.arange(w, dtype=np.float32)
+        taper = np.clip(1 - np.abs(xs - w / 2) / (acc_w / 2 + 1e-3), 0, 1) ** 0.35
+        am *= taper[None, :]
     sil = np.maximum(tm, am)
-    M = np.float32([[1, 0, 0], [0, 1, P(8)]])
-    sh = cv2.warpAffine(sil, M, (Wc, Hc))
-    shadow = np.clip(cv2.GaussianBlur(sh, (0, 0), P(7)) * 0.75 + cv2.GaussianBlur(sh, (0, 0), P(30)) * 0.6, 0, 0.85)
+    sh = np.roll(sil, int(P(6)), 0)
+    shadow = np.clip(cv2.GaussianBlur(sh, (0, 0), P(6)) * 0.7 + cv2.GaussianBlur(sh, (0, 0), P(28)) * 0.55, 0, 0.8)
     gold = np.array(GOLD_RGB[::-1], np.float32) / 255.0
-    white = np.array([0.96, 0.96, 0.96], np.float32)
-    rgb = tm[..., None] * white + am[..., None] * gold
+    white = np.array(color[::-1], np.float32)
+    # very subtle top-to-bottom tonal falloff on the face (no gradient fill, just material)
+    ys = np.linspace(1.0, 0.93, tm.shape[0], dtype=np.float32)[:, None, None]
+    rgb = np.where(sil[..., None] > 0, (tm[..., None] * white * ys + am[..., None] * gold) / np.maximum(sil[..., None], 1e-4), 0)
     alpha = np.clip(sil + shadow * (1 - sil), 0, 1)
-    rgb = np.where(sil[..., None] > 0, (tm[..., None] * white + am[..., None] * gold) / np.maximum(sil[..., None], 1e-4), 0)
-    return np.dstack([rgb.astype(np.float32), alpha.astype(np.float32)])
+    return np.dstack([rgb.astype(np.float32), alpha.astype(np.float32)]), am
 
 
-def draw_title(frame, lines, t, t0, cy, t1=None, size=250, cx=None, shake=12, accent=True, **_):
-    """Slam in with a small impact shake, then hold clean and still; quick fade out."""
+def _title_anim(t, t0, t1):
     tau = t - t0
-    if tau < 0 or (t1 is not None and t > t1 + 0.12):
-        return
-    img = title_img(tuple(lines), size, accent=accent)
-    cx = W / 2 if cx is None else cx
-    s = 1 + 0.5 * (1 - eo3(tau / 0.1))
-    a = eo3(tau / 0.06)
-    ox = oy = 0.0
-    if 0.1 < tau < 0.4:
-        k = tau - 0.1
-        amp = P(shake) * math.exp(-k / 0.06)
-        ox, oy = amp * math.sin(k * 97), amp * 0.5 * math.cos(k * 83)
+    e = 1 - math.exp(-tau / 0.055)          # heavy exponential settle
+    s = 1 + 0.32 * (1 - e)
+    a = clamp01(tau / 0.08)
+    blur = (1 - e) * 1.0
+    oy = 0.0
     if t1 is not None and t > t1:
-        a *= 1 - eo3((t - t1) / 0.12)
+        k = eio((t - t1) / 0.2)
+        a *= 1 - k
+        blur = max(blur, k * 0.8)
+        oy = -P(30) * k
+        s *= 1 + 0.04 * k
+    else:
+        s *= 1 - 0.012 * clamp01(tau / 2.0)    # slow weighted drift while holding
+    return tau, s, a, blur, oy
+
+
+def draw_title(frame, lines, t, t0, cy, t1=None, size=200, cx=None, shake=10, accent=True, glass=False, **_):
+    """Slam in with motion blur and a short impact shake, hold with a slow weighted drift, ease out."""
+    tau = t - t0
+    if tau < 0 or (t1 is not None and t > t1 + 0.2):
+        return
+    cx = W / 2 if cx is None else cx
+    tau, s, a, blur, oy = _title_anim(t, t0, t1)
+    ox = 0.0
+    if 0.06 < tau < 0.35:
+        k = tau - 0.06
+        amp = P(shake) * math.exp(-k / 0.05)
+        ox, oy = ox + amp * math.sin(k * 90), oy + amp * 0.5 * math.cos(k * 77)
+    if glass:
+        POST.append(lambda fr, L=tuple(lines), z=size, x=cx + ox, y=cy + oy, sc=s, al=a, bl=blur:
+                    glass_text(fr, L, z, x, y, sc, al, bl))
+        return
+    img, am = title_img(tuple(lines), size, accent=accent)
+    if accent:  # the gold rule draws outward after the type lands
+        k = eo3((tau - 0.12) / 0.3)
+        img = img.copy()
+        h, w = am.shape
+        xs = np.abs(np.arange(w) - w / 2)
+        keep = (xs <= k * w / 2).astype(np.float32)
+        rule = am > 0
+        img[..., 3] = np.where(rule, img[..., 3] * keep[None, :], img[..., 3])
+    if blur > 0.03:
+        img = img.copy()
+        k = max(1, int(P(40) * blur))
+        img = cv2.blur(img, (1, k * 2 + 1))
     POST.append((img, cx + ox, cy + oy, s, a))
+
+
+def glass_text(frame, lines, size, cx, cy, s, a, blur):
+    """Frosted glass letters: refract and frost what is behind them, bevel highlight, crisp rim."""
+    m, _ = text_mask(tuple(lines), size)
+    if s != 1.0:
+        m = cv2.resize(m, None, fx=s, fy=s, interpolation=cv2.INTER_LINEAR)
+    if blur > 0.03:
+        k = max(1, int(P(40) * blur))
+        m = cv2.blur(m, (1, k * 2 + 1))
+    h, w = m.shape
+    x0, y0 = int(cx - w / 2), int(cy - h / 2)
+    X0, Y0, X1, Y1 = max(0, x0), max(0, y0), min(W, x0 + w), min(H, y0 + h)
+    if X1 <= X0 or Y1 <= Y0:
+        return
+    m = m[Y0 - y0:Y1 - y0, X0 - x0:X1 - x0] * a
+    roi = frame[Y0:Y1, X0:X1]
+    mb = cv2.GaussianBlur(m, (0, 0), P(7))
+    gx = cv2.Sobel(mb, cv2.CV_32F, 1, 0, ksize=3)
+    gy = cv2.Sobel(mb, cv2.CV_32F, 0, 1, ksize=3)
+    hh, ww = m.shape
+    mx, my = np.meshgrid(np.arange(ww, dtype=np.float32), np.arange(hh, dtype=np.float32))
+    frost = cv2.GaussianBlur(roi, (0, 0), P(16))
+    refr = cv2.remap(frost, mx + gx * P(60), my + gy * P(60), cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    glass = refr * 1.45 + np.array([0.16, 0.16, 0.17], np.float32)
+    light = np.clip(-(gx + gy) * P(14), -1, 1)[..., None]       # light from the top-left
+    edge = np.clip(m - cv2.erode(m, np.ones((3, 3), np.uint8), iterations=max(1, int(P(2)))), 0, 1)[..., None]
+    sh = cv2.GaussianBlur(np.roll(m, int(P(10)), 0), (0, 0), P(18))[..., None] * 0.55
+    roi[:] = roi * (1 - sh * (1 - m[..., None]))
+    mm = m[..., None]
+    roi[:] = roi * (1 - mm) + glass * mm
+    roi += (np.clip(light, 0, 1) * 0.45 - np.clip(-light, 0, 1) * 0.22) * mm + edge * 0.8
 
 
 @functools.lru_cache(maxsize=None)

@@ -8,7 +8,9 @@ import numpy as np
 
 import common
 import render
-import scenes
+import importlib
+
+scenes = importlib.import_module(os.environ.get('SCENES', 'scenes'))
 
 var = os.environ['VARIANT']
 out_dir = os.path.join(common.ROOT, 'out', var)

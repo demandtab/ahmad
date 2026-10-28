@@ -1,5 +1,15 @@
 # Quess — vertical cinematic trailer (9:16, 4K, 34 s)
 
+Revision 3 (`scenes3.py`, `mix3.py`): follows the original script scene by scene; Hotseat removed
+everywhere (the private-room beat uses the real Private Room and Create Room screens only); real
+filmed gaming-PC shots from Mixkit green-screen clips with the recordings keyed and tracked onto the
+monitor (`track.py`, `pc.py`); redone THEY JOIN lobby; Cinzel/Montserrat type with a single frosted
+glass title; uploaded Quess / CheQuers / BaQugammon logos and the uploaded outro as the end card.
+
+    SC=1 VARIANT=r3 SCENES=scenes3 python3 build_variant.py && python3 mix3.py audio.wav
+
+Stock footage (Mixkit free licence): #51602 and #51614 (green-screen gaming setups), #51622 (gaming room).
+
 Revision 2: premium captions (clean white condensed type, one thin gold accent line, soft
 shadow; no glow, neon or gradient on any text), cut re-synced to the beat grid of Mixkit
 "Epic Games" (the only music), and two variations:

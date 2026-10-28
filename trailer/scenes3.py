@@ -208,10 +208,10 @@ def k_share(t):
 
 # ------------------------------------------------------------------ THEY JOIN (cinematic lobby)
 SLOTS = [
-    dict(name='AHMAD', army='RED ARMY', col=RED, still='mov_6.6.png', c=(2080, 1160), size=760, t=17.29),
-    dict(name='JOHN GREEN', army='GREEN ARMY', col=GREEN, still='mov_4.0.png', c=(900, 1060), size=900, t=17.86),
-    dict(name='JACKY', army='BLUE ARMY', col=BLUE, still='mov_4.0.png', c=(3250, 960), size=1000, t=19.01),
-    dict(name='OPIE', army='WHITE ARMY', col=WHITE, still='mov_6.6.png', c=(3480, 1200), size=700, t=20.15),
+    dict(name='AHMAD', army='FIRE RED', col=RED, still='mov_6.6.png', c=(2080, 1160), size=760, t=17.29),
+    dict(name='JOHN GREEN', army='EARTH GREEN', col=GREEN, still='mov_4.0.png', c=(900, 1060), size=900, t=17.86),
+    dict(name='JACKY', army='WATER BLUE', col=BLUE, still='mov_4.0.png', c=(3250, 960), size=1000, t=19.01),
+    dict(name='OPIE', army='AIR GREY', col=WHITE, still='mov_6.6.png', c=(3480, 1200), size=700, t=20.15),
 ]
 CARD_W, CARD_H = 0.92, 1.18
 CARD_POS = [(-0.5, -0.64), (0.5, -0.64), (-0.5, 0.64), (0.5, 0.64)]

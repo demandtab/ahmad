@@ -563,6 +563,7 @@ def _title_anim(t, t0, t1):
 
 def draw_title(frame, lines, t, t0, cy, t1=None, size=200, cx=None, shake=10, accent=True, glass=False, **_):
     """Slam in with motion blur and a short impact shake, hold with a slow weighted drift, ease out."""
+    glass = False   # no glass type anywhere (client direction)
     tau = t - t0
     if tau < 0 or (t1 is not None and t > t1 + 0.2):
         return

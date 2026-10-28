@@ -80,7 +80,7 @@ class Clip:
         self.fps = fps
         self.n = len([f for f in os.listdir(self.dir) if f.endswith('.jpg')])
 
-    @functools.lru_cache(maxsize=16)
+    @functools.lru_cache(maxsize=4)
     def frame(self, i):
         i = int(min(max(i, 0), self.n - 1))
         img = cv2.imread(os.path.join(self.dir, f'{i + 1:04d}.jpg'))

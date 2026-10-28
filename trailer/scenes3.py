@@ -208,7 +208,7 @@ def k_share(t):
 
 # ------------------------------------------------------------------ THEY JOIN (cinematic lobby)
 SLOTS = [
-    dict(name='AHMAD', army='FIRE RED', col=RED, still='mov_6.6.png', c=(2080, 1160), size=760, t=17.29),
+    dict(name='TELLER', army='FIRE RED', col=RED, still='mov_6.6.png', c=(2080, 1160), size=760, t=17.29),
     dict(name='JOHN GREEN', army='EARTH GREEN', col=GREEN, still='mov_4.0.png', c=(900, 1060), size=900, t=17.86),
     dict(name='JACKY', army='WATER BLUE', col=BLUE, still='mov_4.0.png', c=(3250, 960), size=1000, t=19.01),
     dict(name='OPIE', army='AIR GREY', col=WHITE, still='mov_6.6.png', c=(3480, 1200), size=700, t=20.15),

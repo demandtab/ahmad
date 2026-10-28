@@ -22,6 +22,8 @@ REMOVED = {23.4, 24.15, 25.29, 25.86, 25.9, 27.0, 27.57}   # cuts that no longer
 def snapped(bus, a, t, *args, **kw):
     if round(t, 2) in REMOVED:
         return
+    if round(t, 2) == 9.86:   # the Quess logo now lands one beat earlier
+        t = 9.29
     return _put(bus, a, scenes6.nom2out(t), *args, **kw)
 
 

@@ -101,7 +101,7 @@ LOGOS = {
     'CheQuers': ('chequers_logo.png', 1640, (530, 560)),
     'BaQugammon': ('baqugammon_logo.png', 1640, (1390, 560)),
 }
-LOGO_T = [('Quess', 9.86), ('CheQuers', 11.0), ('BaQugammon', 12.15)]
+LOGO_T = [('Quess', 9.29), ('CheQuers', 11.0), ('BaQugammon', 12.15)]
 
 
 @functools.lru_cache(maxsize=None)

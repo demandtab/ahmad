@@ -70,19 +70,19 @@ def light_now(t):
 
 def k_choose(t):
     light = light_now(t)
-    if t < 9.86:   # the V1/V2 orbit around the device with the real game-selection screen
+    if t < 9.29:   # the V1/V2 orbit around the device with the real game-selection screen
         lt = t - 8.15
         scr = clip('rec_select').at(0.2 + lt * 0.66)
-        yaw = lerp(-22, -12, eio(lt / 1.71))
-        pose = [0, 0, lerp(2.85, 2.6, eio(lt / 1.71)), yaw, 7, 2.5]
+        yaw = lerp(-22, -12, eio(lt / 1.14))
+        pose = [0, 0, lerp(2.85, 2.6, eio(lt / 1.14)), yaw, 7, 2.5]
         aim, tgt = (960, 503), (W / 2, P(2000))
     else:          # push in panel to panel while each uploaded logo lands
-        src = remap(t, [(9.86, 2.05), (10.999, 2.95), (11.0, 3.1), (12.149, 3.55), (12.15, 1.0), (12.72, 1.57)])   # screen highlights the same game as the logo
+        src = remap(t, [(9.29, 2.0), (10.999, 2.95), (11.0, 3.1), (12.149, 3.55), (12.15, 1.0), (12.72, 1.57)])   # screen highlights the same game as the logo
         scr = clip('rec_select').at(src)
         pts = [s3.LOGOS[n][2] for n, _ in s3.LOGO_T]
         k1, k2 = eio(seg(t, 10.9, 11.1)), eio(seg(t, 12.05, 12.25))
         fx = lerp(lerp(pts[0][0], pts[1][0], k1), pts[2][0], k2)
-        yaw = lerp(-10, 8, eio(seg(t, 9.86, 12.72)))
+        yaw = lerp(-10, 8, eio(seg(t, 9.29, 12.72)))
         pose = [0, 0, 1.75 if not DESK else 1.55, yaw, 6, 0]
         aim, tgt = (fx, 520), (W / 2, P(1850))
     bg = old.arena('env_10.5.jpg', t, ox=yaw * 12)
@@ -93,11 +93,11 @@ def k_choose(t):
         f += cv2.resize(cv2.GaussianBlur(lay, (0, 0), W / 8 * 0.25), (W, H)) * 0.35
     if t < 8.35:
         f += 1.0 * (1 - eo3(seg(t, 8.15, 8.35)))
-    whip = max(math.exp(-abs(t - 9.86) / 0.05), math.exp(-abs(t - 11.0) / 0.05), math.exp(-abs(t - 12.15) / 0.05))
+    whip = max(math.exp(-abs(t - 9.29) / 0.05), math.exp(-abs(t - 11.0) / 0.05), math.exp(-abs(t - 12.15) / 0.05))
     if whip > 0.05:
         f = dir_blur(f, P(500) * whip, 0, n=7)
     old.atmos(f, t, ox=yaw * 25, k=0.6 if DESK else 1.0)
-    if t >= 9.86:
+    if t >= 9.29:
         ys = np.linspace(0, 1, H, dtype=np.float32)[:, None, None]
         f *= 1 - 0.55 * np.clip((ys - 0.66) / 0.18, 0, 1)
         for i, (name, t0) in enumerate(s3.LOGO_T):

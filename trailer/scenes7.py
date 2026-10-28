@@ -72,10 +72,10 @@ s3.k_friends = ending_friends
 scenes4.CAPTIONS = [c for c in scenes4.CAPTIONS if c[0] not in (('LET THE GAME', 'BEGIN'), ('PLAY WITH', 'YOUR FRIENDS'))]
 scenes4.CAPTIONS += [(('LET THE GAME', 'BEGIN'), 23.0, 26.28, 620, 210, False),
                      (('PLAY WITH', 'YOUR FRIENDS'), 26.47, 28.6, 620, 190, False)]
-s3.SHAKES = [s for s in s3.SHAKES if s[0] not in (24.15, 24.72, 25.29, 25.9, 27.0)] + [(26.47, 8)]
+s3.SHAKES = [s for s in s3.SHAKES if s[0] not in (24.15, 24.72, 25.29, 25.9, 27.0, 9.86)] + [(26.47, 8), (9.29, 8)]
 
 # frame-exact beat snapping includes the new 26.43 cut; dissolves replace the blur bridges at the end
-s6.NOMINAL = sorted(set(s6.NOMINAL + [26.43]) - {24.15, 25.29, 25.86, 27.0, 27.57})
+s6.NOMINAL = sorted(set(s6.NOMINAL + [26.43, 9.29]) - {24.15, 25.29, 25.86, 27.0, 27.57, 9.86})
 s6.SNAP = [(0.0, 0.0)] + [(s6.beat_frame(n) - 0.5 / 30, n) for n in s6.NOMINAL] + [(DURATION, DURATION)]
 s6.CUTS = [5.86, 8.15, 12.72, 15.0, 17.29, 20.72]
 render = s6.render

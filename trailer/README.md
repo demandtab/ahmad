@@ -1,5 +1,13 @@
 # Quess — vertical cinematic trailer (9:16, 4K, 34 s)
 
+Final cut (`scenes4.py`): the V1 (mobile) / V2 (desktop) look and shots, the revision-3 THEY JOIN
+lobby, the original script order, no Hotseat, uploaded logos (BaQugammon in white) and outro,
+Anton captions with frosted-glass titles on GOT THREE FRIENDS? and EVERYONE'S IN.
+
+    SC=1 VARIANT=v1 OUTDIR=final_mobile  SCENES=scenes4 python3 build_variant.py
+    SC=1 VARIANT=v2 OUTDIR=final_desktop SCENES=scenes4 python3 build_variant.py
+    python3 mix3.py audio.wav
+
 Revision 3 (`scenes3.py`, `mix3.py`): follows the original script scene by scene; Hotseat removed
 everywhere (the private-room beat uses the real Private Room and Create Room screens only); real
 filmed gaming-PC shots from Mixkit green-screen clips with the recordings keyed and tracked onto the

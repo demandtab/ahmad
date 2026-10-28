@@ -12,7 +12,7 @@ import importlib
 
 scenes = importlib.import_module(os.environ.get('SCENES', 'scenes'))
 
-var = os.environ['VARIANT']
+var = os.environ.get('OUTDIR', os.environ['VARIANT'])
 out_dir = os.path.join(common.ROOT, 'out', var)
 os.makedirs(out_dir, exist_ok=True)
 n = int(round(scenes.DURATION * common.FPS))

@@ -486,11 +486,11 @@ def flush_post(frame):
     return frame
 
 
-HEAD_FONT = 'Cinzel_wght_900.ttf'
+HEAD_FONT = 'Anton.ttf'   # the bold condensed caption type of the V1/V2 edits
 
 
 @functools.lru_cache(maxsize=None)
-def text_mask(lines, size, font_name=HEAD_FONT, tracking=0.06, gap=0.18):
+def text_mask(lines, size, font_name=HEAD_FONT, tracking=0.03, gap=0.14):
     """Anti-aliased mask of centred multi-line type with letter-spacing (in em)."""
     f = font(font_name, P(size))
     tr = P(size) * tracking
@@ -515,7 +515,7 @@ def text_mask(lines, size, font_name=HEAD_FONT, tracking=0.06, gap=0.18):
 
 
 @functools.lru_cache(maxsize=None)
-def title_img(lines, size=200, font_name=HEAD_FONT, accent=True, tracking=0.06, color=(0.97, 0.96, 0.94)):
+def title_img(lines, size=200, font_name=HEAD_FONT, accent=True, tracking=0.03, color=(0.97, 0.96, 0.94)):
     """Premium caption: classical serif caps, refined tracking, one thin gold rule, soft dark shadow."""
     tm, tw = text_mask(tuple(lines), size, font_name, tracking)
     h, w = tm.shape

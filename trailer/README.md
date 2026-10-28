@@ -32,7 +32,7 @@ order, which swaps the brief's 0:03 and 0:07 beats.
 ## Third-party audio
 
 All from Mixkit under the [Mixkit free licence](https://mixkit.co/license/), no attribution required:
-- Music: "Epic Games" (Mixkit #76), the only track used.
+- Music: "Epic Games" (Mixkit #76). The `alarm` mix uses the uploaded "Alarm - Music Mix" instead.
 - Sound effects: Mixkit #1489, 1491, 2596 (whooshes), 2150, 2908, 788, 2182 (impacts),
   2900 (riser), 900, 1113 (clicks), 1108, 3109 (chimes), 368, 364 (crowd).
 - The low sub-drop is synthesised in `mix.py`.

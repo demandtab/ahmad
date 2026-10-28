@@ -1,6 +1,6 @@
 """Soundtrack: music bed + sound design, synced to the picture timeline.
 
-  python3 mix.py out.wav     # Mixkit "Epic Games" (free Mixkit licence) as the only score
+  python3 mix.py out.wav [epic|alarm]   # Mixkit "Epic Games" (default) or the uploaded "Alarm - Music Mix"
 """
 import functools
 import os
@@ -149,11 +149,16 @@ def design():
     return bus
 
 
-def music():
-    """Mixkit "Epic Games" only, offset so its post-break drop lands on 0:23.0."""
+def music(kind='epic'):
+    """Score bed. 'epic': Mixkit "Epic Games", offset so its post-break drop lands on 0:23.0.
+    'alarm': the uploaded "Alarm - Music Mix", delayed so its biggest hit lands on 0:23.0."""
     bus = np.zeros((int(DUR * SR), 2), np.float32)
-    m = load(os.path.join(ROOT, 'music', '76.mp3'))
-    put(bus, m, 0.0, 0.85, src_from=ALT_OFFSET)
+    if kind == 'alarm':
+        m = load(os.path.join(ROOT, 'assets', 'alarm_music_mix.wav'))
+        put(bus, m, 0.45, 0.8)
+    else:
+        m = load(os.path.join(ROOT, 'music', '76.mp3'))
+        put(bus, m, 0.0, 0.85, src_from=ALT_OFFSET)
     k = int(0.3 * SR)
     bus[:k] *= np.linspace(0, 1, k)[:, None]
     k = int(1.6 * SR)  # resolve under the logo
@@ -165,7 +170,7 @@ ALT_OFFSET = float(os.environ.get('ALT_OFFSET', '11.28'))
 
 if __name__ == '__main__':
     out = sys.argv[1]
-    mix = music() + design() * 0.8
+    mix = music(sys.argv[2] if len(sys.argv) > 2 else 'epic') + design() * 0.8
     mix = np.tanh(mix * 1.1) / np.tanh(1.1)
     tmp = out + '.raw.wav'
     import scipy.io.wavfile as wf

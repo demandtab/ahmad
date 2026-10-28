@@ -150,7 +150,7 @@ def k_choose(t):
             f = zoom_blur(f, 0.12 * (1 - seg(t, 8.72, 8.82)))
         return f
     # phone close-ups that move panel to panel while each uploaded logo lands: Quess, CheQuers, BaQugammon
-    src = remap(t, [(9.86, 1.34), (12.72, 2.8)])
+    src = remap(t, [(9.86, 2.05), (10.999, 2.95), (11.0, 3.1), (12.149, 3.55), (12.15, 1.0), (12.72, 1.57)])   # screen highlights the same game as the logo
     scr = clip('rec_select').at(src)
     pts = [LOGOS[n][2] for n, _ in LOGO_T]
     k1, k2 = eio(seg(t, 10.9, 11.1)), eio(seg(t, 12.05, 12.25))
@@ -477,7 +477,7 @@ def d_choose(t):
         if t < 8.6:   # the click flash carries over the cut
             f = click_burst(f, t, (W / 2, P(1920)))
         return f
-    src = remap(t, [(9.86, 1.34), (12.72, 2.8)])
+    src = remap(t, [(9.86, 2.05), (10.999, 2.95), (11.0, 3.1), (12.149, 3.55), (12.15, 1.0), (12.72, 1.57)])   # screen highlights the same game as the logo
     ui = clip('rec_select').at(src)
     pts = [LOGOS[n][2] for n, _ in LOGO_T]
     k1, k2 = eio(seg(t, 10.9, 11.1)), eio(seg(t, 12.05, 12.25))

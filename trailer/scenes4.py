@@ -77,7 +77,7 @@ def k_choose(t):
         pose = [0, 0, lerp(2.85, 2.6, eio(lt / 1.71)), yaw, 7, 2.5]
         aim, tgt = (960, 503), (W / 2, P(2000))
     else:          # push in panel to panel while each uploaded logo lands
-        src = remap(t, [(9.86, 1.34), (12.72, 2.8)])
+        src = remap(t, [(9.86, 2.05), (10.999, 2.95), (11.0, 3.1), (12.149, 3.55), (12.15, 1.0), (12.72, 1.57)])   # screen highlights the same game as the logo
         scr = clip('rec_select').at(src)
         pts = [s3.LOGOS[n][2] for n, _ in s3.LOGO_T]
         k1, k2 = eio(seg(t, 10.9, 11.1)), eio(seg(t, 12.05, 12.25))
@@ -112,7 +112,7 @@ def k_choose(t):
                 img = cv2.blur(img, (1, max(1, int(P(30) * (1 - e))) * 2 + 1))
             place_post(img, P(1080), P(3080), 1.08 - 0.08 * e, a)
             if name == 'Quess' and tau > 0.15:
-                place_post(s3.label('4-PLAYER CHESS', 76, 'Anton.ttf', 0.12), P(1080), P(3520), 1.0,
+                place_post(s3.label('4-PLAYER CHESS', 70), P(1080), P(3520), 1.0,
                            a * eo3((tau - 0.15) / 0.2))
     return f
 

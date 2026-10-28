@@ -79,3 +79,27 @@ s6.NOMINAL = sorted(set(s6.NOMINAL + [26.43, 9.29]) - {24.15, 25.29, 25.86, 27.0
 s6.SNAP = [(0.0, 0.0)] + [(s6.beat_frame(n) - 0.5 / 30, n) for n in s6.NOMINAL] + [(DURATION, DURATION)]
 s6.CUTS = [5.86, 8.15, 12.72, 15.0, 17.29, 20.72]
 render = s6.render
+
+# ------------------------------------------------------------------ hook: third army lights up (three friends)
+import cv2  # noqa: E402
+import math  # noqa: E402
+
+_hook = s3.k_hook
+BLUE_T = 2.699   # next half-beat after the white (2.15) and green (2.43) flashes; lands on frame 81
+
+
+def hook_three(t):
+    f = _hook(t)
+    if t >= BLUE_T:
+        k = math.exp(-(t - BLUE_T) / 0.22)
+        if k > 0.01:   # WATER BLUE army at the far side of the board lights up
+            lay = np.zeros((H // 8, W // 8, 3), np.float32)
+            cv2.ellipse(lay, (int(W * 0.5 / 8), int(H * 0.43 / 8)), (int(W * 0.3 / 8), int(H * 0.08 / 8)), 0, 0, 360,
+                        old.BLUE, -1)
+            lay = cv2.GaussianBlur(lay, (0, 0), W / 8 * 0.08)
+            f = f + cv2.resize(lay, (W, H)) * 0.9 * k
+    return f
+
+
+s3.k_hook = hook_three
+s3.SHAKES = s3.SHAKES + [(2.7, 10)]

@@ -35,6 +35,7 @@ if __name__ == '__main__':
     snapped(design, sfx('2182'), 26.43, 0.6, align='peak')
     snapped(design, synth_sub(), 26.43, 0.3)
     snapped(design, sfx('1491'), 24.72, 0.45, align='peak')
+    snapped(design, sfx('2182'), 2.7, 0.7, align='peak', r=0.72)   # third army (WATER BLUE) lights up
     mix3.put = _put
     mix = mix3.music() + design * 0.8
     mix = np.tanh(mix * 1.1) / np.tanh(1.1)

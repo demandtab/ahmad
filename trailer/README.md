@@ -1,5 +1,12 @@
 # Quess — vertical cinematic trailer (9:16, 4K, 34 s)
 
+Revision 2: premium captions (clean white condensed type, one thin gold accent line, soft
+shadow; no glow, neon or gradient on any text), cut re-synced to the beat grid of Mixkit
+"Epic Games" (the only music), and two variations:
+
+- `VARIANT=v1`: phone mockups, except the Hotseat shot, which plays on a gaming PC (Hotseat is PC-only).
+- `VARIANT=v2`: every UI and gameplay shot plays on the gaming PC setup; no phones anywhere.
+
 A scripted build of the Quess trailer. All UI and gameplay comes from the real
 recordings and game cinematics. The scripts add the 3D phone, arena, particles,
 titles, grade and sound design on top.
@@ -30,7 +37,6 @@ All from Mixkit under the [Mixkit free licence](https://mixkit.co/license/), no 
   2900 (riser), 900, 1113 (clicks), 1108, 3109 (chimes), 368, 364 (crowd).
 - The low sub-drop is synthesised in `mix.py`.
 
-The main mix uses the uploaded `Alarm - Music Mix.wav`.
 
 ## Build
 
@@ -38,8 +44,9 @@ The main mix uses the uploaded `Alarm - Music Mix.wav`.
 pip install opencv-python-headless numpy pillow scipy
 # extract source segments into ../src (see SOURCES in render notes), fonts into ../fonts
 SC=0.25 python3 render.py sheet preview.jpg 1.0 5.0 12.5    # quick look
-SC=1 python3 render.py video video_4k.mp4 4 14             # 4K picture
-python3 mix.py main audio_main.wav                          # soundtrack
+SC=1 VARIANT=v1 python3 build_variant.py                    # 4K picture, variation 1
+SC=1 VARIANT=v2 python3 build_variant.py                    # 4K picture, variation 2
+python3 mix.py audio.wav                                    # soundtrack (shared by both)
 ```
 
 Fonts: Anton, Cinzel and Oswald (Google Fonts, SIL Open Font License).

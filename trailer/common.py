@@ -459,74 +459,80 @@ def font(name, size):
     return ImageFont.truetype(os.path.join(FONTS, name), max(4, int(size)))
 
 
+GOLD_RGB = (212, 176, 96)
+POST = []  # text layers composited after the grade so white stays clean white
+
+
+def place_post(img, cx, cy, s=1.0, alpha=1.0):
+    POST.append((img, cx, cy, s, alpha))
+
+
+def flush_post(frame):
+    for img, cx, cy, s, a in POST:
+        place(frame, img, cx, cy, s, a)
+    POST.clear()
+    return frame
+
+
 @functools.lru_cache(maxsize=None)
-def title_img(lines, size=250, bar=(200, 20, 30), fg=(255, 255, 255), font_name='Anton.ttf', pad_x=70,
-              pad_y=34, gap=22, extrude=12, bar_on=True):
-    """Bold condensed white type with a short extrusion, each line on a clean red banner bar."""
+def title_img(lines, size=250, font_name='Anton.ttf', gap=14, accent=True, tracking=3):
+    """Premium caption: clean white condensed type, one thin gold accent line, soft dark shadow."""
     f = font(font_name, P(size))
-    px, py, g, ex = int(P(pad_x)), int(P(pad_y)), int(P(gap)), max(1, int(P(extrude)))
+    g = int(P(gap))
+    tr = P(tracking)
     boxes = [f.getbbox(t) for t in lines]
-    ws = [b[2] - b[0] for b in boxes]
+    ws = [int(f.getlength(t) + tr * (len(t) - 1)) for t in lines]
+    asc = [b[1] for b in boxes]
     cap = max(b[3] - b[1] for b in boxes)
-    bar_h = cap + 2 * py + ex
-    bw = max(ws) + 2 * px
-    marg = int(P(80))
-    Wc, Hc = bw + 2 * marg, len(lines) * bar_h + (len(lines) - 1) * g + 2 * marg
-    shadow = Image.new('L', (Wc, Hc), 0)
-    bars = Image.new('RGBA', (Wc, Hc), (0, 0, 0, 0))
-    text = Image.new('RGBA', (Wc, Hc), (0, 0, 0, 0))
-    ds, db, dt = ImageDraw.Draw(shadow), ImageDraw.Draw(bars), ImageDraw.Draw(text)
-    for i, (t, b, w_) in enumerate(zip(lines, boxes, ws)):
-        y0 = marg + i * (bar_h + g)
-        lw = w_ + 2 * px
-        x0 = (Wc - lw) // 2
-        if bar_on:
-            ds.rectangle([x0 + int(P(10)), y0 + int(P(18)), x0 + lw + int(P(10)), y0 + bar_h + int(P(18))], fill=200)
-            for k in range(bar_h):
-                sh = 1.0 - 0.28 * (k / bar_h)
-                db.line([(x0, y0 + k), (x0 + lw, y0 + k)],
-                        fill=(int(bar[0] * sh), int(bar[1] * sh), int(bar[2] * sh), 255))
-            db.line([(x0, y0), (x0 + lw, y0)], fill=(255, 120, 110, 255), width=max(1, int(P(4))))
-        else:
-            ds.text((x0 + px - b[0] + int(P(8)), y0 + py - b[1] + int(P(14))), t, font=f, fill=220)
-        tx, ty = x0 + px - b[0], y0 + py - b[1]
-        for k in range(ex, 0, -1):
-            v = int(30 + 40 * (1 - k / ex))
-            dt.text((tx, ty + k), t, font=f, fill=(v, v, v + 4, 255))
-        dt.text((tx, ty), t, font=f, fill=fg + (255,))
-    from PIL import ImageFilter
-    shadow = shadow.filter(ImageFilter.GaussianBlur(P(22)))
-    base = Image.new('RGBA', (Wc, Hc), (0, 0, 0, 0))
-    base.putalpha(shadow.point(lambda v: int(v * 0.7)))
-    base = Image.alpha_composite(base, bars)
-    base = Image.alpha_composite(base, text)
-    arr = np.asarray(base).astype(np.float32) / 255.0
-    rgb = arr[..., [2, 1, 0]]
-    # subtle vertical sheen on the type face
-    return np.dstack([rgb, arr[..., 3]])
+    line_h = cap
+    acc_gap, acc_h = int(P(34)), max(1, int(P(6)))
+    acc_w = int(min(max(ws) * 0.45, P(340)))
+    marg = int(P(90))
+    Wc = max(ws) + 2 * marg
+    Hc = len(lines) * line_h + (len(lines) - 1) * g + (acc_gap + acc_h if accent else 0) + 2 * marg
+    text = Image.new('L', (Wc, Hc), 0)
+    dt = ImageDraw.Draw(text)
+    for i, (t, w_, a0) in enumerate(zip(lines, ws, asc)):
+        x = (Wc - w_) / 2
+        y = marg + i * (line_h + g) - a0
+        for ch in t:
+            dt.text((x, y), ch, font=f, fill=255)
+            x += f.getlength(ch) + tr
+    acc = Image.new('L', (Wc, Hc), 0)
+    if accent:
+        ya = marg + len(lines) * line_h + (len(lines) - 1) * g + acc_gap
+        ImageDraw.Draw(acc).rectangle([(Wc - acc_w) // 2, ya, (Wc + acc_w) // 2, ya + acc_h], fill=255)
+    tm = np.asarray(text).astype(np.float32) / 255.0
+    am = np.asarray(acc).astype(np.float32) / 255.0
+    sil = np.maximum(tm, am)
+    M = np.float32([[1, 0, 0], [0, 1, P(8)]])
+    sh = cv2.warpAffine(sil, M, (Wc, Hc))
+    shadow = np.clip(cv2.GaussianBlur(sh, (0, 0), P(7)) * 0.75 + cv2.GaussianBlur(sh, (0, 0), P(30)) * 0.6, 0, 0.85)
+    gold = np.array(GOLD_RGB[::-1], np.float32) / 255.0
+    white = np.array([0.96, 0.96, 0.96], np.float32)
+    rgb = tm[..., None] * white + am[..., None] * gold
+    alpha = np.clip(sil + shadow * (1 - sil), 0, 1)
+    rgb = np.where(sil[..., None] > 0, (tm[..., None] * white + am[..., None] * gold) / np.maximum(sil[..., None], 1e-4), 0)
+    return np.dstack([rgb.astype(np.float32), alpha.astype(np.float32)])
 
 
-def draw_title(frame, lines, t, t0, cy, t1=None, size=250, cx=None, bar=(200, 20, 30), fg=(255, 255, 255),
-               font_name='Anton.ttf', shake=18, bar_on=True):
+def draw_title(frame, lines, t, t0, cy, t1=None, size=250, cx=None, shake=12, accent=True, **_):
+    """Slam in with a small impact shake, then hold clean and still; quick fade out."""
     tau = t - t0
-    if tau < 0 or (t1 is not None and t > t1 + 0.16):
+    if tau < 0 or (t1 is not None and t > t1 + 0.12):
         return
-    img = title_img(tuple(lines), size, bar, fg, font_name, bar_on=bar_on)
+    img = title_img(tuple(lines), size, accent=accent)
     cx = W / 2 if cx is None else cx
-    s = 1 + 0.85 * (1 - eo3(tau / 0.12))
-    a = eo3(tau / 0.07)
+    s = 1 + 0.5 * (1 - eo3(tau / 0.1))
+    a = eo3(tau / 0.06)
     ox = oy = 0.0
-    if tau > 0.12:
-        k = tau - 0.12
-        amp = P(shake) * math.exp(-k / 0.08)
-        ox, oy = amp * math.sin(k * 97), amp * 0.6 * math.cos(k * 83)
+    if 0.1 < tau < 0.4:
+        k = tau - 0.1
+        amp = P(shake) * math.exp(-k / 0.06)
+        ox, oy = amp * math.sin(k * 97), amp * 0.5 * math.cos(k * 83)
     if t1 is not None and t > t1:
-        e = eo3((t - t1) / 0.16)
-        s *= 1 + 0.35 * e
-        a *= 1 - e
-    place(frame, img, cx + ox, cy + oy, s, a)
-    if 0.1 < tau < 0.4:  # brief hot flash on the type as it lands
-        place(frame, img, cx + ox, cy + oy, s, 0.6 * math.exp(-(tau - 0.1) / 0.07), add=True)
+        a *= 1 - eo3((t - t1) / 0.12)
+    POST.append((img, cx + ox, cy + oy, s, a))
 
 
 @functools.lru_cache(maxsize=None)
@@ -618,3 +624,169 @@ def grade(f, t, sat=1.18, leak=0.10, vig=0.62, grain=0.018, exposure=1.0, warm=0
 
 def to_u8(f):
     return (np.clip(f, 0, 1) * 255 + 0.5).astype(np.uint8)
+
+
+# ---------------------------------------------------------------- gaming PC setup
+class Monitor(Device):
+    """Thin-bezel desktop monitor; same screen-mapping interface as the phone."""
+
+    def __init__(self):
+        self.SW, self.SH = int(P(2100)), int(P(2100) * SRC_H / SRC_W)
+        self.BZ = int(P(26))
+        chin = int(P(46))
+        self.TW, self.TH = self.SW + 2 * self.BZ, self.SH + self.BZ + chin
+        TW, TH, BZ = self.TW, self.TH, self.BZ
+        body = rrect_mask(TW, TH, int(P(18)))
+        rgb = np.zeros((TH, TW, 3), np.float32)
+        rgb[:] = (0.035, 0.035, 0.04)
+        edge = np.clip(body - cv2.erode(body, np.ones((3, 3), np.uint8), iterations=max(1, int(P(3)))), 0, 1)
+        rgb += edge[..., None] * 0.22
+        rgb[TH - chin + int(P(6)):TH - int(P(6)), :] *= 0.8
+        self.body_rgb, self.body_a = rgb, body
+        sm = np.zeros((TH, TW), np.float32)
+        sm[BZ:BZ + self.SH, BZ:BZ + self.SW] = 1.0
+        self.screen_mask = sm[..., None]
+        yy, xx = np.mgrid[0:TH, 0:TW].astype(np.float32)
+        d = xx / TW * 0.7 + yy / TH * 0.5
+        self.gloss = (np.exp(-((d - 0.42) / 0.12) ** 2) * 0.035)[..., None] * self.screen_mask
+        self.dw = 2.0
+        self.dh = self.dw * TH / TW
+        self.th = 0.05
+        self.r_world = 0.02
+
+    def outline(self, pose, z_off=0.0):
+        x, y, z, yaw, pitch, roll = pose
+        hx, hy = self.dw / 2, self.dh / 2
+        loc = np.array([[-hx, -hy, z_off], [hx, -hy, z_off], [hx, hy, z_off], [-hx, hy, z_off]])
+        return (rotm(yaw, pitch, roll) @ loc.T).T + np.array([x, y, z])
+
+
+MON = None
+
+
+def monitor():
+    global MON
+    if MON is None:
+        MON = Monitor()
+    return MON
+
+
+@functools.lru_cache(maxsize=None)
+def kb_base():
+    KW, KH = int(P(1500)), int(P(470))
+    body = rrect_mask(KW, KH, int(P(26)))
+    keys = np.zeros((KH, KW), np.float32)
+    pad, gapk = P(28), P(9)
+    rows = [15, 15, 14, 13, 12, 8]
+    rh = (KH - 2 * pad - 5 * gapk) / 6
+    for r, n in enumerate(rows):
+        y0 = pad + r * (rh + gapk)
+        if r == 5:
+            widths = [1, 1, 1, 6.5, 1, 1, 1, 1]
+        else:
+            widths = [1] * n
+            widths[-1] += (15 - sum(widths))
+        unit = (KW - 2 * pad - (len(widths) - 1) * gapk) / sum(widths)
+        x0 = pad
+        for wk in widths:
+            x1 = x0 + wk * unit
+            cv2.rectangle(keys, (int(x0), int(y0)), (int(x1), int(y0 + rh)), 1.0, -1)
+            x0 = x1 + gapk
+    return KW, KH, body, keys
+
+
+def kb_texture(t):
+    KW, KH, body, keys = kb_base()
+    hue = ((np.arange(KW, dtype=np.float32) / KW * 180 + t * 50) % 180).astype(np.uint8)
+    hsv = np.stack([hue, np.full(KW, 255, np.uint8), np.full(KW, 255, np.uint8)], 1)[None]
+    row = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0].astype(np.float32) / 255.0
+    light = np.repeat(row[None], KH, 0)
+    under = cv2.GaussianBlur(keys, (0, 0), max(1.0, P(5))) - keys * 0.85
+    rgb = np.full((KH, KW, 3), 0.03, np.float32)
+    rgb += np.clip(under, 0, 1)[..., None] * light * 1.3
+    rgb = rgb * (1 - keys[..., None]) + (0.07 + light * 0.10) * keys[..., None]
+    return np.dstack([rgb, body]), light * keys[..., None]
+
+
+def _poly_proj(R, T, loc):
+    Pw = (R @ np.asarray(loc, float).T).T + T
+    return Pw, proj(Pw)
+
+
+def desk_shot(bg, screen, pose, t, light=(0.95, 0.25, 0.7), glow=0.5, refl=0.22, kb=True):
+    """Gaming PC setup: monitor on a stand, RGB keyboard and mouse on a glossy desk, LED wall glow."""
+    m = monitor()
+    frame = bg.copy()
+    x, y, z, yaw, pitch, roll = pose
+    R, T = rotm(yaw, pitch, roll), np.array([x, y, z])
+    light = np.array(light, np.float32)
+    desk_y = m.dh / 2 + 0.42
+    # LED strip behind the monitor washing the wall
+    _, c = _poly_proj(R, T, [[0, -0.1, 0.55]])
+    lay = np.zeros((H // 8, W // 8, 3), np.float32)
+    cv2.ellipse(lay, (int(c[0, 0] / 8), int(c[0, 1] / 8)), (int(W * 0.62 / 8), int(H * 0.17 / 8)), 0, 0, 360,
+                tuple(float(v) for v in light), -1)
+    lay = cv2.GaussianBlur(lay, (0, 0), W / 8 * 0.16)
+    frame += cv2.resize(lay, (W, H)) * 0.75
+    # desk surface below its back edge
+    _, e = _poly_proj(R, T, [[-6, desk_y, 0.7], [6, desk_y, 0.7]])
+    (x1, y1), (x2, y2) = e
+    yl = y1 + (0 - x1) * (y2 - y1) / (x2 - x1 + 1e-6)
+    yr = y1 + (W - x1) * (y2 - y1) / (x2 - x1 + 1e-6)
+    dm = np.zeros((H, W), np.float32)
+    cv2.fillPoly(dm, [np.array([[0, yl], [W, yr], [W, H + 10], [0, H + 10]], np.int32)], 1.0, cv2.LINE_AA)
+    ys = np.arange(H, dtype=np.float32)[:, None, None]
+    yedge = (yl + yr) / 2
+    deskcol = 0.022 + light * 0.20 * np.exp(-np.clip(ys - yedge, 0, None) / P(420))
+    frame = frame * (1 - dm[..., None]) + deskcol * dm[..., None]
+    # monitor reflection in the glossy desk
+    tex = m.texture(screen)
+    hx, hy = m.dw / 2, m.dh / 2
+    mir = [[-hx, 2 * desk_y + hy, 0], [hx, 2 * desk_y + hy, 0], [hx, 2 * desk_y - hy, 0], [-hx, 2 * desk_y - hy, 0]]
+    Pm, pm = _poly_proj(R, T, mir)
+    if (Pm[:, 2] > 0.3).all():
+        src = np.array([[0, 0], [m.TW, 0], [m.TW, m.TH], [0, m.TH]], np.float32)
+        Hr = cv2.getPerspectiveTransform(src, pm.astype(np.float32))
+        wr = cv2.warpPerspective(tex, Hr, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        fade = np.clip(1 - (ys[..., 0] - yedge) / P(700), 0, 1) ** 1.5
+        ra = wr[..., 3:4] * fade[..., None] * refl * dm[..., None]
+        frame[:] = frame * (1 - ra) + cv2.GaussianBlur(wr[..., :3], (0, 0), max(0.5, P(6))) * ra
+    # stand: base plate and neck
+    Pb, pb = _poly_proj(R, T, [[-0.36, desk_y, -0.02], [0.36, desk_y, -0.02], [0.3, desk_y, 0.32], [-0.3, desk_y, 0.32]])
+    if (Pb[:, 2] > 0.3).all():
+        cv2.fillConvexPoly(frame, pb.astype(np.int32), (0.05, 0.05, 0.055), cv2.LINE_AA)
+        cv2.line(frame, tuple(pb[0].astype(int)), tuple(pb[1].astype(int)), (0.25, 0.25, 0.27), max(1, int(P(3))), cv2.LINE_AA)
+    Pn, pn = _poly_proj(R, T, [[-0.07, hy - 0.2, 0.07], [0.07, hy - 0.2, 0.07], [0.09, desk_y, 0.12], [-0.09, desk_y, 0.12]])
+    if (Pn[:, 2] > 0.3).all():
+        cv2.fillConvexPoly(frame, pn.astype(np.int32), (0.07, 0.07, 0.078), cv2.LINE_AA)
+    # monitor body + screen
+    hull = cv2.convexHull(np.vstack([proj(m.outline(pose)), proj(m.outline(pose, m.th))]).astype(np.int32))
+    cv2.fillConvexPoly(frame, hull, tuple(float(v) for v in (0.03 + 0.08 * light)), cv2.LINE_AA)
+    Hm = m.homography(pose)
+    warped = cv2.warpPerspective(tex, Hm, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+    a = warped[..., 3:4]
+    glow_add(frame, warped[..., :3] * a, glow * 0.7, sigmas=(60, 200))
+    frame[:] = frame * (1 - a) + warped[..., :3] * a
+    # keyboard + mouse on the desk
+    if kb:
+        ky = desk_y - 0.03
+        Pk, pk = _poly_proj(R, T, [[-0.86, ky, -0.6], [0.86, ky, -0.6], [0.86, ky, -1.1], [-0.86, ky, -1.1]])
+        if (Pk[:, 2] > 0.35).all():
+            ktex, klight = kb_texture(t)
+            src = np.array([[0, 0], [ktex.shape[1], 0], [ktex.shape[1], ktex.shape[0]], [0, ktex.shape[0]]], np.float32)
+            Hk = cv2.getPerspectiveTransform(src, pk.astype(np.float32))
+            _, pf = _poly_proj(R, T, [[0.86, desk_y, -1.1], [-0.86, desk_y, -1.1]])
+            cv2.fillConvexPoly(frame, np.array([pk[2], pk[3], pf[1], pf[0]], np.int32), (0.02, 0.02, 0.025), cv2.LINE_AA)
+            kw = cv2.warpPerspective(ktex, Hk, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+            kl = cv2.warpPerspective(np.ascontiguousarray(klight), Hk, (W, H), flags=cv2.INTER_LINEAR)
+            glow_add(frame, kl, 0.9, sigmas=(25, 90), down=4)
+            ka = kw[..., 3:4]
+            frame[:] = frame * (1 - ka) + kw[..., :3] * ka
+        ang = np.linspace(0, 2 * np.pi, 24, endpoint=False)
+        Pmo, pmo = _poly_proj(R, T, np.stack([1.2 + 0.1 * np.cos(ang), np.full_like(ang, desk_y - 0.035),
+                                               -0.85 + 0.16 * np.sin(ang)], 1))
+        if (Pmo[:, 2] > 0.35).all():
+            cv2.fillConvexPoly(frame, cv2.convexHull(pmo.astype(np.int32)), (0.035, 0.035, 0.04), cv2.LINE_AA)
+            cv2.polylines(frame, [cv2.convexHull(pmo.astype(np.int32))], True,
+                          tuple(float(v) for v in light * 0.9), max(1, int(P(4))), cv2.LINE_AA)
+    return frame, Hm

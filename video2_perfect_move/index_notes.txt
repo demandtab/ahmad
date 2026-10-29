@@ -1,0 +1,43 @@
+Checkers.mp4 | 1920x1080 5.6s | four army emblem discs (red, grey, blue, green) on black, static | END/army flash accent
+Chinese_Air.mp4 | 4K 5.6s | low angle over 4-colour board (blue left/orange right/grey near) push-in to AIR GREY Chinese army; 4s cut to close row of grey warriors | army intro
+Chinese_Earth.mp4 | 4K 5.4s | same move for EARTH GREEN Chinese army; 4s close-up of green warriors | army intro
+Chinese_Fire.mp4 | 4K 7.5s | same for FIRE RED Chinese army; 4-7s close-up row of red warriors | army intro / hook alt
+Chinese_Water.mp4 | 4K 4.8s | low angle push toward WATER BLUE Chinese pieces | army intro
+French_Fire.mp4 | 4K 6.8s | board push-in then 2-6s burning red French pieces close-up | montage
+French_air.mp4 | 4K 5.0s | board push-in, 4s grey French pieces in smoke | montage
+French_earth.mp4 | 4K 5.5s | board push-in, 4s green French pieces with leaves VFX | montage
+French_water.mp4 | 4K 11.3s | board low angle, 4s close-up blue pieces with water arcs, 6-11s low board hold on blue army | montage
+King_Air_Chineese.mp4 | 4K 7.0s | grey Chinese king in dark swirl vortex, static | cutaway/montage
+Burn_down_animation.mp4 | 4K 9.6s | green piece on board, 6s burns to embers, 8s empty orange board | montage capture moment
+Chinesse.mp4 | 4K 10.1s | four Chinese kings (green, grey, blue, red) in blue vortex | END lead-in / hook
+Fire.mp4 | 4K 10.3s | single flaming red piece on dark, static | montage
+BAckgamon.mp4 | 1920x1080 26.4s | BaQugammon board macro: red checkers 0-5s, green 6-9s, blue 10-15s, grey 16-19s, dice 20-26s | NOT Quess (do not use for chess beats)
+Casino_video.mp4 | 4K 22.1s | 3D casino environment fly-through, roulette, slot machines, blue light | environment, not chess
+Chineese_Queen.mp4 | 4K 28.7s | four Chinese queens (green/grey/blue/red) in coloured vortex, camera orbits; 8-10 close orbit, 20s red piece alone | montage/END lead-in
+Chinesse_VFX.mp4 | 4K 27.3s | Chinese pieces with elemental VFX, 0s big hero line-up, vortex orbits, 8s green close-up | hook/END lead-in
+Frecnh_king.mp4 | 4K 27.7s | four French kings (grey/blue/green/red) glowing in vortex, orbit; 6s grey king close | montage
+French_Chess_pieces.mp4 | 4K 26.0s | army close-ups with VFX: green leaves 0-5, red fire 6-9, blue water 10-15, grey smoke 16-19; 20-26 full 4-player board with all four French armies, high angle orbit | montage (army flashes), board hero 20-26
+French_Queen.mp4 | 4K 25.8s | French queens line-up in vortex, same moves as French king | montage
+French_VFX.mp4 | 4K 33s | French pieces with VFX hero line-up 0-5 (grey/red/blue/green), vortex orbits | montage / END lead-in
+King_Earth_Chineese.mp4 | 4K 7s | green Chinese king in grey/green vortex, static | EARTH GREEN flash
+King_Fire_Chineese.mp4 | 4K 7s | red Chinese king, red vortex, static | FIRE RED flash
+King_Water_Chinesse.mp4 | 4K 7s | blue Chinese king, cyan vortex | WATER BLUE flash
+Movie_004.mp4 | 4K 5.6s | AIR GREY elemental character (white smoke humanoid) seated on throne, close, idle | hook "player studies the board"
+Movie_005.mp4 | ? ~9s | overhead: four elemental characters on thrones around small board on blue whirlpool; 6s cut to BaQugammon 4-player board top-down | cutaway (0-5s only; 6s+ is BaQugammon)
+Movie_009.mp4 | ? 13s | AIR GREY character on throne, medium, idle, dark theatre bg | hook alt / Wait reaction
+Movie_013.mp4 | ? 13s | high wide: four elemental players (grey, red, green, blue) seated on thrones around board on whirlpool, static | hook / pull-out
+Game_Quess_Env.mp4 | 4K 84s | in-engine cinematic of real 4-player board: 0-17 FIRE RED fire-character looms behind board (green/blue/grey armies foreground); 18-31 EARTH GREEN character leans over board, low angle across pieces; 32-39 top-down board flanked by WATER BLUE and FIRE RED characters; 40-55 low angle over WATER BLUE + AIR GREY armies, red smoke bg; 56-81 FIRE RED POV behind red army, one red piece advanced centre; 82 tilted overhead board | hook (EARTH GREEN char studying board 18-31), pull-out (32-39 top-down)
+NOTE Movie_005/012/013/014/015/017 = same "throne whirlpool" set; close-ups (005 6s+, 012 18-28s, 014 38s) reveal the table is the 4-player BaQugammon board, not Quess -> do NOT use as chess board. Wide shots only as ambience at most.
+Movie_012.mp4 | 4K 34.6s | 0-17 high-angle wide: 4 elemental players on thrones around table, whirlpool; 18-24 close BaQugammon board with EARTH GREEN/AIR GREY/FIRE RED chars; 26-28 top-down BaQugammon; 30-34 straight-down wide | not chess
+Movie_014.mp4 | 4K 39.5s | same set, 0-19 wide, 20-25 top-down cross, 26-37 angle orbit, 38 BaQugammon close | not chess
+Movie_015.mp4 | 4K 12.1s | same high wide, static | not chess
+Movie_017.mp4 | 4K 12.1s | same high wide, static | not chess
+Movie_019.mp4 | 4K 16.9s | WATER BLUE character (water swirl humanoid) on throne, idle, blue piece statue right | hook alt / WATER BLUE cutaway
+Movie_020.mp4 | 1080p 11.7s | WATER BLUE character animating (gesturing), same set | cutaway WATER BLUE
+Movie_021.mp4 | 1080p 13.9s | FIRE RED Chinese king piece standing on lit floor, same theatre set | cutaway FIRE RED
+Movie_035.mp4 | 4K 3.2s | tiny distant pieces in dark (4 kings + blue pieces) | unusable (too small/dark)
+Movie_036.mp4 | 4K 3.2s | same, tiny, dark | unusable
+Movie_039.mp4 | 4K 3.8s | EARTH GREEN Chinese king in green vortex with leaves VFX | EARTH GREEN flash
+Movie_047.mp4 | 4K 5.8s | push-in to four Chinese kings in blue vortex | montage
+Movie_050.mp4 | 4K 2.9s | AIR GREY French piece in smoke, dark | montage short
+Movie_051.mp4 | 4K 5.9s | AIR GREY French king in grey vortex | AIR GREY flash

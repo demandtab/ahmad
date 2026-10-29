@@ -16,13 +16,13 @@ All measurements are given at 1080x1920. The code works in 4K units, which are d
   - 3: MOVE PLAYED.
   - 4 / 6: THEN PLAYER 2 / MOVES. · THEN PLAYER 3 / MOVES.
   - 8: YOUR PERFECT / MOVE... → JUST GOT / COMPLICATED.
-  - END: THREE / OPPONENTS. → MORE THAN / ONE MOVE / TO WATCH. (the 3-line end card) → PLAY QUESS.
+  - END: the three statements build on beats, at most 3 lines on screen: THREE / OPPONENTS. → MORE THAN / ONE MOVE / TO WATCH. → PLAY QUESS. At the fixed size, MORE THAN ONE MOVE TO WATCH. fits only as three short lines. PLAY QUESS. lands with the real outro, which is shifted up as one untouched layer so its logo, badges and URL sit above the text zone.
   - 2: I know exactly / what to do. · 5: Ok... still fine. · 7: Wait. / That changes everything.
 - Gold rule: fixed 190 px width, 3.5 px weight, 20 px gap under every narrator block. It is centred and tapers at its ends.
 
 ## Placement
-- **One zone: TOP (locked).** Every block, narrator and thought, starts at the same place: its first line's cap top sits 260 px from the top, and it grows downward. Even the 3-line end card stays clear of the top 220 px zone this way, and it matches the last trailer, where the board action sits in the lower two-thirds.
-- Everything is centred on the frame. The maximum width of 800 px keeps text out of the right 140 px zone. Nothing goes in the bottom 380 px.
+- **One zone: BOTTOM (locked).** Every block, narrator and thought, ends at the same place: its last ink row (the gold rule, or the last line of a thought) sits 1500 px from the top, 40 px clear of the bottom 380 px UI zone. Blocks grow upward. Nothing is placed at the top or in the middle.
+- Everything is centred on the frame. The maximum width of 800 px keeps text out of the right 140 px zone. Nothing goes in the top 220 px or the bottom 380 px.
 
 ## Animation (each hit SNAPped frame-exact to the beat grid)
 - Narrator text reveals per line. Each line scales in from 1.15× with blur-to-sharp in about 0.2 s, with a small impact shake on the hit.

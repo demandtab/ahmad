@@ -74,7 +74,7 @@ def frame(name, focus, zoom, t, extra=None, narr=None, th=None, flash=None, safe
 
 
 TILES = [
-    ('1 HOOK  push-in, tension (UI zones shown)', frame('hook', (0.47, 0.55), 1.15, 1.0,
+    ('1 HOOK  push-in (UI zones in red)', frame('hook', (0.47, 0.55), 1.15, 1.0,
                                                         narr=('WHEN YOU', 'FINALLY FIND'), safe=True)),
     ('2 THOUGHT  FIRE RED turn: sweep + spotlight', frame('red_pov', (0.55, 0.6), 1.35, 3.0,
                                                          extra=lambda f: spotlight(f, 1080, 1700, 520),
@@ -88,7 +88,7 @@ TILES = [
     ('8 CHAOS  board-level dolly', frame('chaos2', (0.55, 0.55), 1.0, 12.0, narr=('JUST GOT', 'COMPLICATED.'))),
     ('8 PULL-OUT  all four armies', frame('chaos3', (0.5, 0.55), 1.0, 13.0)),
     ('END card  3-line max', frame('thrones', (0.5, 0.55), 1.0, 14.0, narr=('MORE THAN', 'ONE MOVE', 'TO WATCH.'))),
-    ('END  real outro + lines', frame('outro', (0.5, 0.5), 1.0, 15.0, narr=('PLAY QUESS.',))),
+    ('END  real outro + lines', frame('outro', (0.5, 0.62), 1.0, 15.0, narr=('PLAY QUESS.',))),
 ]
 
 if __name__ == '__main__':

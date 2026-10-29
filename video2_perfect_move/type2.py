@@ -20,7 +20,7 @@ NARR_SIZE = 172            # the one narrator size (86 px font at 1080): largest
 NARR_TRACK = 0.06
 THOUGHT_FONT = 'CormorantGaramond-BoldItalic.ttf'
 THOUGHT_SIZE = 172         # the one thought size (86 px font at 1080)
-TEXT_TOP = 520             # the one text zone: the first line's cap top always sits 260 px from the top at 1080x1920
+TEXT_BOTTOM = 3000         # the one text zone: every block's last ink row sits 1500 px down (40 px above the bottom 380 px UI zone)
 RULE_W, RULE_H, RULE_GAP = 380, 7, 40   # gold rule: fixed width, weight and spacing under every narrator block
 GOLD = np.array(C.GOLD_RGB[::-1], np.float32) / 255.0
 IVORY = np.array((0.94, 0.96, 0.97), np.float32)       # BGR ivory
@@ -97,18 +97,18 @@ def _compose(tm, am, shadow_k, extra_alpha=None):
 _TOPS = {}
 
 
-def place_text(frame, img, top=TEXT_TOP, s=1.0, a=1.0, dx=0.0, dy=0.0):
-    """Top-anchored: every block's first cap line starts at the same y (one fixed text place)."""
+def place_text(frame, img, bottom=TEXT_BOTTOM, s=1.0, a=1.0, dx=0.0, dy=0.0):
+    """Bottom-anchored: every block's last ink row (gold rule or last line) sits at the same y; blocks grow upward."""
     k = id(img)
     if k not in _TOPS:
-        ink = (img[..., :3].mean(2) > 0.5) & (img[..., 3] > 0.5)
-        _TOPS[k] = int(np.nonzero(ink.any(1))[0][0])
+        ink = (img[..., 3] > 0.5) & (img[..., :3].max(2) > 0.4)
+        _TOPS[k] = int(np.nonzero(ink.any(1))[0][-1])
     h = img.shape[0]
-    cy = P(top) - (_TOPS[k] - h / 2) * s
+    cy = P(bottom) - (_TOPS[k] - h / 2) * s
     C.place(frame, img, C.W / 2 + dx, cy + dy, s, a)
 
 
-def army_sweep(frame, bgr, k, cy=TEXT_TOP + 150):
+def army_sweep(frame, bgr, k, cy=TEXT_BOTTOM - 150):
     """Army-colour light band sweeping behind the text zone (army colour never touches the letters)."""
     h, w = frame.shape[:2]
     yy = (np.arange(h, dtype=np.float32) - P(cy)) / P(420)

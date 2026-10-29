@@ -7,3 +7,6 @@
 - Inventory: tools/inventory.sh (download -> probe -> 1 frame/2 s sheet -> 540p proxy -> delete original). Media lives outside the repo in /home/user/media.
 - Fonts (Google Fonts, OFL), Mixkit SFX/music are fetched into ../fonts, ../sfx, ../music (git-ignored).
 - Reference trailer Quess_Trailer_FINAL_Mobile_1080p.mp4: NOT YET UPLOADED (asked).
+- Reference trailer: Drive 10MdgKFiMvXf5u_UiH-F0kHxnWdnGyJSs (1080x1920, 34.5 s). 1fps sheet in /home/user/media/ref/ref_1fps.jpg.
+- Inventory complete: 76/76 (MEDIA_INDEX.md). BLOCKER: no real move sequence in the folder; asked the user (option: old-folder "Quess gameplay (1).mp4" / "Quess Gameplay tra.mp4").
+- Moodboard: moodboard.py -> moodboard_v1.jpg (real frames, trailer grade, proposed type).

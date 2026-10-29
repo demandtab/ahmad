@@ -60,3 +60,19 @@ Movie_088.mp4 | 4K 5.9s | 0 walk-in, 2-4 board floating (chess side, red/green/b
 Movie_092.mp4 | 4K 2.4s | CheQuers board low angle, blue checkers | NOT Quess
 Movie_083.mp4 | 4K 93s | 0-29 same as 084 (thrones intro, walk-in, hybrid board); 30-93 near-black empty nebula floor | avoid (dark tail)
 Movie_096.mp4 | 1080x1920 PORTRAIT 15.7s | low-angle hero close-ups on board: 0-5 WATER BLUE knight rearing, 6-9 AIR GREY rook in clouds (red piece 8s), 10-15 EARTH GREEN bishop with leaves, blue knight 14s | native 9:16 -> montage/army flashes (excellent)
+Movie_091.mp4 | 4K 24.3s | CheQuers checkers macro, low angle (blue, red, grey, green discs) | NOT Quess
+Movie_097.mp4 | 4K 17.1s | low-angle board-level dolly through armies: 0-4 WATER BLUE knight rearing beside AIR GREY pieces, 6-8 AIR GREY in clouds, red pieces 8s, 10-14 EARTH GREEN bishop + leaves, 16 blue/grey | montage (board-level chaos), hook alt
+Moving_checkers.mp4 | 4K 22.3s | same as Movie_091 (CheQuers) | NOT Quess
+REFERENCE Quess_Trailer_FINAL_Mobile_1080p (Drive 10MdgKFiMvXf5u_UiH-F0kHxnWdnGyJSs) | 1080x1920 29.97 34.5s | low macro board shots (red army foreground, shallow DOF), Cinzel caps top-third with gold rule, warm red / teal split grade, heavy vignette, bokeh, phone UI floating, logo on black + outro end
+Movie_087.mp4 | 4K 33.2s | thrones intro variant (FIRE RED/WATER BLUE 6-10, AIR GREY 12, EARTH GREEN 16), walk-in 20-22, hybrid board 26-30, dark tail 32 | alt
+Movie_089.mp4 | 4K 12.2s | walk-in 0, hybrid board floating 4-8, dark 10 | alt
+Movie_099.mp4 | 4K 71.5s | casino environment fly-through (same as Casino video), 20-71 static | not chess
+NEw_Chequers.mp4 | 4K 23.9s | CheQuers macro checkers | NOT Quess
+Quess_Character.mp4 | 4K 46.5s | army close-ups: French green 0-5, red 6-9, blue 10-15, grey 16-19; 20-24 full 4-player board with all four armies, high orbit (pull-out); Chinese green 26-29, red 30-35, blue 36-39, grey 40-45 | montage, pull-out 20-24
+Quess_Room.mp4 | 4K 16.9s | empty Quess game room (thrones, paintings, lamp), slow pan, dark | ambience only
+Quess_video.mp4 | 4K 70.3s | 0-23 high angle room with 4 thrones around 4-player board; 24-30 overhead empty board; 30.5-41 overhead REAL mid-game position (FIRE RED piece centre, AIR GREY pieces right, WATER BLUE bottom, EARTH GREEN left) static; 42-51 EARTH GREEN char over board; 52-55 FIRE RED char behind WATER BLUE army; 56-61 AIR GREY char behind EARTH GREEN army; 62-66 WATER BLUE char behind FIRE RED army; 68 tilted board | board states / cut-back reactions
+RecorderClip_001.mp4 | 4K 19.9s | CheQuers checkers macro | NOT Quess
+RecorderClip_002.mp4 | 4K 19.9s | CheQuers checkers macro | NOT Quess
+White.mp4 | 1080p 7s | AIR GREY French king in clouds on black, static | AIR GREY flash
+Movie_022.mp4 | 1080p 41.3s | empty thrones around BaQugammon table on blue whirlpool in casino; 32-40 BaQugammon board close | not chess
+Movie_023.mp4 | 1080p 64.2s | same set, 52-63 BaQugammon board top-down | not chess

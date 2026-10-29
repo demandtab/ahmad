@@ -17,6 +17,7 @@ import numpy as np  # noqa: E402
 from PIL import Image, ImageDraw, ImageFont  # noqa: E402
 
 import common as C  # noqa: E402
+import type2 as T  # noqa: E402
 from common import P, W, H  # noqa: E402
 
 FR = sys.argv[1]
@@ -46,67 +47,48 @@ def edge_flash(f, bgr, k=0.6):
     return f + np.exp(-e ** 2)[..., None] * np.array(bgr, np.float32) / 255 * k
 
 
-def narrator(f, lines, cy, size=150):
-    img, _ = C.title_img(tuple(lines), size)
-    C.place(f, img, P(CX), P(cy))
+EMB = C.Embers(11, 70, size=(2, 5), speed=(60, 160), color=(0.35, 0.6, 1.0), down=3, blur=1.6, gain=0.55)
 
 
-def thought(f, text, cy, size=150):
-    """Inner thought: bold italic serif, sentence case, soft dark backing (no glass, no glow)."""
-    fnt = ImageFont.truetype(os.path.join(C.FONTS, 'CormorantGaramond-BoldItalic.ttf'), int(P(size)))
-    b = ImageDraw.Draw(Image.new('L', (1, 1))).multiline_textbbox((0, 0), text, font=fnt, align='center',
-                                                                  spacing=int(P(size * 0.12)))
-    pad = int(P(70))
-    w, h = int(b[2] - b[0]) + 2 * pad, int(b[3] - b[1]) + 2 * pad
-    im = Image.new('L', (w, h), 0)
-    ImageDraw.Draw(im).multiline_text((pad - b[0], pad - b[1]), text, font=fnt, fill=255, align='center',
-                                      spacing=int(P(size * 0.12)))
-    m = np.asarray(im).astype(np.float32) / 255
-    back = np.zeros_like(m)
-    cv2.rectangle(back, (int(pad * 0.5), int(pad * 0.55)), (w - int(pad * 0.5), h - int(pad * 0.55)), 1, -1)
-    back = cv2.GaussianBlur(back, (0, 0), P(34)) * 0.62
-    sh = cv2.GaussianBlur(np.roll(m, int(P(5)), 0), (0, 0), P(5)) * 0.7
-    a = np.clip(np.maximum(back, sh) + m, 0, 1)
-    rgb = np.dstack([m] * 3) * 0.97
-    rgb = np.where(a[..., None] > 0, rgb / np.maximum(a[..., None], 1e-4), 0)
-    C.place(f, np.dstack([rgb, a]).astype(np.float32), P(CX), P(cy))
-
-
-def frame(name, focus, zoom, t, extra=None, narr=None, th=None, flash=None):
+def frame(name, focus, zoom, t, extra=None, narr=None, th=None, flash=None, safe=False):
     f = load(name, focus, zoom)
     if extra:
         f = extra(f)
     if flash:
-        f = edge_flash(f, ARMY[flash])
-    f = C.grade(f, t, sat=1.15, leak=0.06, vig=0.5, grain=0.012, bloom=0.35)
+        f = edge_flash(f, ARMY[flash], 0.45)
+        T.army_sweep(f, ARMY[flash], 0.55)
+    EMB.draw(f, t)                                   # ember / bokeh depth layer behind the type
+    f = C.grade(f, t, sat=1.15, leak=0.06, vig=0.62, grain=0.012, bloom=0.35)
     if narr:
-        narrator(f, *narr)
+        T.place_text(f, T.narrator_img(narr)[0])
     if th:
-        thought(f, *th)
-    return C.to_u8(f)
+        T.place_text(f, T.thought_img(th)[0])
+    out = C.to_u8(f)
+    if safe:   # UI safe-zone guides (moodboard only)
+        o = out.copy()
+        cv2.rectangle(o, (0, 0), (W, int(H * 220 / 1920)), (0, 0, 255), -1)
+        cv2.rectangle(o, (0, H - int(H * 380 / 1920)), (W, H), (0, 0, 255), -1)
+        cv2.rectangle(o, (W - int(W * 140 / 1080), 0), (W, H), (0, 0, 255), -1)
+        out = cv2.addWeighted(out, 0.75, o, 0.25, 0)
+    return out
 
 
 TILES = [
-    ('1 HOOK  push-in, tension', frame('hook', (0.47, 0.55), 1.15, 1.0,
-                                       narr=(('WHEN YOU FINALLY FIND', 'THE PERFECT MOVE...'), 760, 120))),
-    ('2 THOUGHT  FIRE RED POV, spotlight', frame('red_pov', (0.55, 0.6), 1.35, 3.0,
-                                                 extra=lambda f: spotlight(f, 1080, 1700, 520), flash='FIRE RED',
-                                                 th=('I know exactly\nwhat to do.', 2700, 190))),
-    ('3 MOVE PLAYED  overhead hold', frame('board_overhead', (0.5, 0.48), 1.0, 5.0,
-                                           narr=(('MOVE PLAYED.',), 760, 150))),
-    ('4-5 PLAYER 2  WATER BLUE low drift', frame('low_blue', (0.42, 0.62), 1.2, 7.0, flash='WATER BLUE',
-                                                 narr=(('THEN PLAYER 2 MOVES.',), 760, 120),
-                                                 th=('Ok... still fine.', 2750, 190))),
-    ('6-7 IMPACT  sharp, no blur', frame('fire_char', (0.47, 0.42), 1.25, 9.0, flash='EARTH GREEN',
-                                         th=('Wait.\nThat changes everything.', 2650, 175))),
-    ('8 CHAOS  native 9:16 hero', frame('chaos1', (0.5, 0.5), 1.0, 11.0,
-                                        narr=(('YOUR PERFECT MOVE...', 'JUST GOT COMPLICATED.'), 760, 110))),
-    ('8 CHAOS  board-level dolly', frame('chaos2', (0.55, 0.55), 1.0, 12.0)),
+    ('1 HOOK  push-in, tension (UI zones shown)', frame('hook', (0.47, 0.55), 1.15, 1.0,
+                                                        narr=('WHEN YOU', 'FINALLY FIND'), safe=True)),
+    ('2 THOUGHT  FIRE RED turn: sweep + spotlight', frame('red_pov', (0.55, 0.6), 1.35, 3.0,
+                                                         extra=lambda f: spotlight(f, 1080, 1700, 520),
+                                                         flash='FIRE RED', th=('I know exactly', 'what to do.'))),
+    ('3 MOVE PLAYED  overhead hold', frame('board_overhead', (0.5, 0.52), 1.0, 5.0, narr=('MOVE PLAYED.',))),
+    ('4 PLAYER 2  WATER BLUE sweep, wide drift', frame('low_blue', (0.42, 0.62), 1.2, 7.0, flash='WATER BLUE',
+                                                       narr=('THEN PLAYER 2', 'MOVES.'))),
+    ('7 IMPACT  sharp, no blur', frame('fire_char', (0.47, 0.5), 1.25, 9.0, flash='EARTH GREEN',
+                                      th=('Wait.', 'That changes everything.'))),
+    ('8 CHAOS  native 9:16 hero', frame('chaos1', (0.5, 0.56), 1.0, 11.0, narr=('YOUR PERFECT', 'MOVE...'))),
+    ('8 CHAOS  board-level dolly', frame('chaos2', (0.55, 0.55), 1.0, 12.0, narr=('JUST GOT', 'COMPLICATED.'))),
     ('8 PULL-OUT  all four armies', frame('chaos3', (0.5, 0.55), 1.0, 13.0)),
-    ('END lead-in  four players', frame('thrones', (0.5, 0.55), 1.0, 14.0,
-                                        narr=(('THREE OPPONENTS.',), 760, 140))),
-    ('END  real outro + lines', frame('outro', (0.5, 0.5), 1.0, 15.0,
-                                      narr=(('PLAY QUESS.',), 760, 170))),
+    ('END lead-in  four players', frame('thrones', (0.5, 0.55), 1.0, 14.0, narr=('THREE', 'OPPONENTS.'))),
+    ('END  real outro + lines', frame('outro', (0.5, 0.5), 1.0, 15.0, narr=('PLAY QUESS.',))),
 ]
 
 if __name__ == '__main__':

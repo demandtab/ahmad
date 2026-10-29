@@ -8,19 +8,20 @@ All measurements are given at 1080x1920. The code works in 4K units, which are d
 - Army colours never touch the letters. They appear only as the edge flash and as a light sweep behind the text zone.
 
 ## Fixed sizes (never resized from beat to beat)
-- Narrator: **77.5 px** (cap height about 54 px). Thought: **86 px**, with its cap height matched to the narrator caps.
-- **Why this is smaller than the last trailer:** the trailer's captions ran up to 910 px wide. Here, centred text has to stay clear of the right 140 px UI zone, which leaves at most **800 px** of width. The longest end-card line, MORE THAN ONE / MOVE TO WATCH., only fits within that at this size. Every other line uses the same size.
+- One size for every narrator line and one for every thought line: **86 px font** at 1080. Narrator capitals are about 60 px tall.
+- **How this compares with the last trailer:** that trailer's captions measured about 96 px. They also ran into the right 140 px UI zone; "EVERYONE'S IN" reaches x≈985.
+- **Why 86 px:** text centred on the frame has at most **800 px** of width. "COMPLICATED." can't be split, so 86 px is the largest size where every line fits. That makes it about 90% of the trailer's size, the closest match the safe zones allow.
 - Lines that are too long are split into two lines at the same size, never shrunk:
   - 1: WHEN YOU / FINALLY FIND → THE PERFECT / MOVE... (one line revealed after another, at most 2 on screen)
   - 3: MOVE PLAYED.
   - 4 / 6: THEN PLAYER 2 / MOVES. · THEN PLAYER 3 / MOVES.
   - 8: YOUR PERFECT / MOVE... → JUST GOT / COMPLICATED.
-  - END: THREE / OPPONENTS. → MORE THAN ONE / MOVE TO WATCH. → PLAY QUESS. (3-line end card)
+  - END: THREE / OPPONENTS. → MORE THAN / ONE MOVE / TO WATCH. (the 3-line end card) → PLAY QUESS.
   - 2: I know exactly / what to do. · 5: Ok... still fine. · 7: Wait. / That changes everything.
 - Gold rule: fixed 190 px width, 3.5 px weight, 20 px gap under every narrator block. It is centred and tapers at its ends.
 
 ## Placement
-- **One zone: TOP.** Every line, narrator and thought, uses the same block centre, 330 px from the top. This keeps text clear of the top 220 px UI zone, and it matches the last trailer, where the board action sits in the lower two-thirds.
+- **One zone: TOP (locked).** Every block, narrator and thought, starts at the same place: its first line's cap top sits 260 px from the top, and it grows downward. Even the 3-line end card stays clear of the top 220 px zone this way, and it matches the last trailer, where the board action sits in the lower two-thirds.
 - Everything is centred on the frame. The maximum width of 800 px keeps text out of the right 140 px zone. Nothing goes in the bottom 380 px.
 
 ## Animation (each hit SNAPped frame-exact to the beat grid)

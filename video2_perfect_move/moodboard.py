@@ -87,22 +87,23 @@ TILES = [
     ('8 CHAOS  native 9:16 hero', frame('chaos1', (0.5, 0.56), 1.0, 11.0, narr=('YOUR PERFECT', 'MOVE...'))),
     ('8 CHAOS  board-level dolly', frame('chaos2', (0.55, 0.55), 1.0, 12.0, narr=('JUST GOT', 'COMPLICATED.'))),
     ('8 PULL-OUT  all four armies', frame('chaos3', (0.5, 0.55), 1.0, 13.0)),
-    ('END lead-in  four players', frame('thrones', (0.5, 0.55), 1.0, 14.0, narr=('THREE', 'OPPONENTS.'))),
+    ('END card  3-line max', frame('thrones', (0.5, 0.55), 1.0, 14.0, narr=('MORE THAN', 'ONE MOVE', 'TO WATCH.'))),
     ('END  real outro + lines', frame('outro', (0.5, 0.5), 1.0, 15.0, narr=('PLAY QUESS.',))),
 ]
 
 if __name__ == '__main__':
     out = sys.argv[2]
     cols, tw, th_ = 5, W, H
-    lab = 44
-    F = ImageFont.truetype(os.path.join(C.FONTS, 'Montserrat-SemiBold.ttf'), 22)
-    FT = ImageFont.truetype(os.path.join(C.FONTS, 'Cinzel_wght_900.ttf'), 40)
+    k = C.SC / 0.25
+    lab = int(44 * k)
+    F = ImageFont.truetype(os.path.join(C.FONTS, 'Montserrat-SemiBold.ttf'), int(22 * C.SC / 0.25))
+    FT = ImageFont.truetype(os.path.join(C.FONTS, 'Cinzel_wght_900.ttf'), int(40 * C.SC / 0.25))
     rows = (len(TILES) + cols - 1) // cols
     ref = [Image.open(os.path.join(FR, f'ref_{i}.jpg')) for i in (1, 10, 22, 27, 30)]
     rw, rh = ref[0].size
-    head = 90
+    head = int(90 * k)
     ref_h = rh + lab + 20
-    sw_h = 150
+    sw_h = int(150 * k)
     Wc = cols * tw + (cols + 1) * 16
     Hc = head + ref_h + rows * (th_ + lab + 16) + sw_h + 30
     can = Image.new('RGB', (Wc, Hc), (14, 12, 12))
@@ -117,15 +118,15 @@ if __name__ == '__main__':
     for i, (name, img) in enumerate(TILES):
         r, c = divmod(i, cols)
         x0, y0 = 16 + c * (tw + 16), y + r * (th_ + lab + 16)
-        d.text((x0, y0 + 10), name, font=F, fill=(255, 220, 120))
+        d.text((x0, y0 + int(10 * k)), name, font=F, fill=(255, 220, 120))
         can.paste(Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB)), (x0, y0 + lab))
     y += rows * (th_ + lab + 16)
     sw = [('FIRE RED', (225, 40, 40)), ('WATER BLUE', (30, 150, 235)), ('EARTH GREEN', (70, 200, 60)),
           ('AIR GREY', (200, 200, 200)), ('GOLD RULE', (206, 172, 98))]
     for i, (n, col) in enumerate(sw):
-        d.rectangle((16 + i * 300, y, 16 + i * 300 + 60, y + 60), fill=col)
-        d.text((16 + i * 300 + 72, y + 18), n, font=F, fill=(230, 230, 230))
-    d.text((16, y + 80), 'SOUND ARC  1-3 calm  |  4-5 unease  |  6 riser 2900  |  0.25 s silence  |  7 impact + sub-drop '
+        d.rectangle((16 + i * int(300 * k), y, 16 + i * int(300 * k) + int(60 * k), y + int(60 * k)), fill=col)
+        d.text((16 + i * int(300 * k) + int(72 * k), y + int(18 * k)), n, font=F, fill=(230, 230, 230))
+    d.text((16, y + int(80 * k)), 'SOUND ARC  1-3 calm  |  4-5 unease  |  6 riser 2900  |  0.25 s silence  |  7 impact + sub-drop '
                          '(biggest hit)  |  8 + END loudest, sting on PLAY QUESS', font=F, fill=(220, 220, 220))
     can.save(out, quality=90)
     print('wrote', out, can.size)

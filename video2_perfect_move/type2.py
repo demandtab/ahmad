@@ -16,11 +16,11 @@ import common as C  # noqa: E402
 from common import P  # noqa: E402
 
 NARR_FONT = 'Cinzel_wght_900.ttf'
-NARR_SIZE = 155            # the one narrator size (fits 800 px safe width at 1080 for every line)
+NARR_SIZE = 172            # the one narrator size (86 px font at 1080): largest size where every line clears the right UI zone
 NARR_TRACK = 0.06
 THOUGHT_FONT = 'CormorantGaramond-BoldItalic.ttf'
-THOUGHT_SIZE = 172         # the one thought size (cap height matched to the narrator caps)
-TEXT_CY = 660              # the one text zone: block centre 330 px below the top at 1080x1920
+THOUGHT_SIZE = 172         # the one thought size (86 px font at 1080)
+TEXT_TOP = 520             # the one text zone: the first line's cap top always sits 260 px from the top at 1080x1920
 RULE_W, RULE_H, RULE_GAP = 380, 7, 40   # gold rule: fixed width, weight and spacing under every narrator block
 GOLD = np.array(C.GOLD_RGB[::-1], np.float32) / 255.0
 IVORY = np.array((0.94, 0.96, 0.97), np.float32)       # BGR ivory
@@ -94,11 +94,21 @@ def _compose(tm, am, shadow_k, extra_alpha=None):
     return np.dstack([rgb.astype(np.float32), alpha.astype(np.float32)])
 
 
-def place_text(frame, img, cy=TEXT_CY, s=1.0, a=1.0):
-    C.place(frame, img, C.W / 2, P(cy), s, a)
+_TOPS = {}
 
 
-def army_sweep(frame, bgr, k, cy=TEXT_CY):
+def place_text(frame, img, top=TEXT_TOP, s=1.0, a=1.0, dx=0.0, dy=0.0):
+    """Top-anchored: every block's first cap line starts at the same y (one fixed text place)."""
+    k = id(img)
+    if k not in _TOPS:
+        ink = (img[..., :3].mean(2) > 0.5) & (img[..., 3] > 0.5)
+        _TOPS[k] = int(np.nonzero(ink.any(1))[0][0])
+    h = img.shape[0]
+    cy = P(top) - (_TOPS[k] - h / 2) * s
+    C.place(frame, img, C.W / 2 + dx, cy + dy, s, a)
+
+
+def army_sweep(frame, bgr, k, cy=TEXT_TOP + 150):
     """Army-colour light band sweeping behind the text zone (army colour never touches the letters)."""
     h, w = frame.shape[:2]
     yy = (np.arange(h, dtype=np.float32) - P(cy)) / P(420)

@@ -41,3 +41,22 @@ Movie_039.mp4 | 4K 3.8s | EARTH GREEN Chinese king in green vortex with leaves V
 Movie_047.mp4 | 4K 5.8s | push-in to four Chinese kings in blue vortex | montage
 Movie_050.mp4 | 4K 2.9s | AIR GREY French piece in smoke, dark | montage short
 Movie_051.mp4 | 4K 5.9s | AIR GREY French king in grey vortex | AIR GREY flash
+Movie_038.mp4 | 4K 16.1s | EARTH GREEN Chinese king tiny->closer in bright green energy cloud | EARTH GREEN flash
+Movie_061.mp4 | 4K 3.8s | EARTH GREEN king in grey/green vortex (near dup of King_Earth) | alt
+Movie_062.mp4 | 4K 4.3s | EARTH GREEN Chinese bishop-type piece in green mist | alt
+Movie_074.mp4 | 4K 10.4s | character intro pan: 0 FIRE RED fire close, 2 WATER BLUE face with glowing orb, 4 AIR GREY, 6-10 all four seated on thrones in a row (red, green, blue, grey) | END lead-in / hook
+Movie_075.mp4 | 4K 12.4s | same pan as 074 (WATER BLUE glowing eyes, no orb), 10s AIR GREY close | alt of 074
+Movie_076.mp4 | 4K 9.6s | same pan variant | alt of 074
+Movie_077.mp4 | 4K 13.7s | four elemental players seated around a chequered Quess board on a white whirlpool; 0 wide, 2 push-in, 4-6 over WATER BLUE shoulder at FIRE RED player, 8 AIR GREY, 10-13 over-shoulder board | HOOK "player studies the board"
+Movie_078.mp4 | 4K 10.2s | same as 077 (used in trailer 1 for THEY JOIN) | alt (avoid: used in trailer 1)
+Movie_079.mp4 | 4K 22.5s | throne-in-space intro: 0-2 distant, 4 FIRE RED + WATER BLUE on thrones, 8 WATER BLUE, 10-12 AIR GREY, 14 EARTH GREEN, 16 nebula (dark), 18-22 all four seated in a row | END lead-in (20-22 row of four) / cutaways per player
+Movie_080.mp4 | 4K 22.4s | same as 079 | alt
+Movie_081.mp4 | 4K 30s | same as 079 0-16, 18-21 four characters WALK toward camera, 24-26 board floating in nebula with EARTH GREEN pieces | alt; walk-in for montage
+Movie_082.mp4 | 4K 29.3s | same as 081 | alt
+Movie_084.mp4 | 4K 30s | same as 081, 24-28 hybrid board (chess squares + BaQugammon points on one side) floating by planet | hybrid board: avoid as chess
+Movie_085.mp4 | 1080p 28s | same as 084 | alt
+Movie_086.mp4 | 4K 12.5s | 0-4 four characters walking, 6-12 hybrid board floating by planet | walk-in 0-4
+Movie_088.mp4 | 4K 5.9s | 0 walk-in, 2-4 board floating (chess side, red/green/blue edges) | montage
+Movie_092.mp4 | 4K 2.4s | CheQuers board low angle, blue checkers | NOT Quess
+Movie_083.mp4 | 4K 93s | 0-29 same as 084 (thrones intro, walk-in, hybrid board); 30-93 near-black empty nebula floor | avoid (dark tail)
+Movie_096.mp4 | 1080x1920 PORTRAIT 15.7s | low-angle hero close-ups on board: 0-5 WATER BLUE knight rearing, 6-9 AIR GREY rook in clouds (red piece 8s), 10-15 EARTH GREEN bishop with leaves, blue knight 14s | native 9:16 -> montage/army flashes (excellent)

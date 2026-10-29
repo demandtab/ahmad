@@ -1,6 +1,6 @@
 """Locked type system for "The Perfect Move" (see TYPE_SPEC.md).
 
-One fixed narrator size, one fixed thought size, one text zone (top), everything centre aligned.
+One font for every line (Cinzel Black), one fixed size, one text zone (bottom), everything centre aligned.
 Units are final 4K units (2160x3840) like trailer/common.py; P() scales them for previews.
 """
 import functools
@@ -15,28 +15,26 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 import common as C  # noqa: E402
 from common import P  # noqa: E402
 
-NARR_FONT = 'Cinzel_wght_900.ttf'
-NARR_SIZE = 172            # the one narrator size (86 px font at 1080): largest size where every line clears the right UI zone
-NARR_TRACK = 0.06
-THOUGHT_FONT = 'CormorantGaramond-BoldItalic.ttf'
-THOUGHT_SIZE = 172         # the one thought size (86 px font at 1080)
+FONT = 'Cinzel_wght_900.ttf'   # the only font in the video: narrator caps and sentence-case thoughts
+NARR_SIZE = 155            # 0.9 x the previous 172 (77.5 px font at 1080)
+THOUGHT_SIZE = 155         # same font, same size, same weight; only the case differs
+TRACK = 0.06
 TEXT_BOTTOM = 3000         # the one text zone: every block's last ink row sits 1500 px down (40 px above the bottom 380 px UI zone)
-RULE_W, RULE_H, RULE_GAP = 380, 7, 40   # gold rule: fixed width, weight and spacing under every narrator block
+RULE_W, RULE_H, RULE_GAP = 342, 6.3, 36   # gold rule (0.9 x): fixed width, weight and spacing under every narrator block
 GOLD = np.array(C.GOLD_RGB[::-1], np.float32) / 255.0
 IVORY = np.array((0.94, 0.96, 0.97), np.float32)       # BGR ivory
 SAFE_W = 1600              # 800 px usable width at 1080 (frame centre, right UI zone 140 px)
 
 
-def _mask(lines, font_name, size, tracking, gap, italic_pad=0.0):
-    f = C.font(font_name, P(size))
+def _mask(lines, size, tracking=TRACK, gap=0.34):
+    f = C.font(FONT, P(size))
     tr = P(size) * tracking
     ws = [sum(f.getlength(ch) for ch in t) + tr * (len(t) - 1) for t in lines]
     top = f.getbbox('H')[1]
     cap = f.getbbox('H')[3] - top
-    asc_desc = f.getbbox('Hgy')[3] - top
-    line_h = cap if font_name == NARR_FONT else asc_desc
+    line_h = cap
     g = int(P(size) * gap)
-    marg = int(P(60) + P(size) * italic_pad)
+    marg = int(P(60))
     Wc = int(max(ws)) + 2 * marg
     Hc = len(lines) * line_h + (len(lines) - 1) * g + 2 * marg
     im = Image.new('L', (Wc, Hc), 0)
@@ -53,7 +51,7 @@ def _mask(lines, font_name, size, tracking, gap, italic_pad=0.0):
 @functools.lru_cache(maxsize=None)
 def narrator_img(lines):
     """Ivory Cinzel Black caps + centred gold rule (fixed width/weight/gap). Returns (rgba, rule_mask)."""
-    tm, tw, marg = _mask(tuple(lines), NARR_FONT, NARR_SIZE, NARR_TRACK, 0.34)
+    tm, tw, marg = _mask(tuple(lines), NARR_SIZE)
     assert tw <= P(SAFE_W) + 1, (lines, tw)
     h, w = tm.shape
     rw = int(P(RULE_W))
@@ -65,14 +63,14 @@ def narrator_img(lines):
     am = np.zeros_like(tm)
     xs = np.arange(w2, dtype=np.float32)
     taper = np.clip(1 - np.abs(xs - w2 / 2) / (rw / 2), 0, 1) ** 0.35
-    am[rule_y:rule_y + max(1, int(P(RULE_H)))] = taper[None, :]
+    am[rule_y:rule_y + max(1, int(round(P(RULE_H))))] = taper[None, :]
     return _compose(tm, am, 0.9), am
 
 
 @functools.lru_cache(maxsize=None)
 def thought_img(lines):
-    """Ivory bold italic serif, sentence case, soft dark backing for busy boards."""
-    tm, tw, _ = _mask(tuple(lines), THOUGHT_FONT, THOUGHT_SIZE, 0.0, 0.0, italic_pad=0.6)
+    """Same Cinzel Black, sentence case, soft dark backing for busy boards (no rule: it is an inner voice)."""
+    tm, tw, _ = _mask(tuple(lines), THOUGHT_SIZE)
     assert tw <= P(SAFE_W) + 1, (lines, tw)
     back = np.zeros_like(tm)
     k = int(P(60))
@@ -97,14 +95,20 @@ def _compose(tm, am, shadow_k, extra_alpha=None):
 _TOPS = {}
 
 
-def place_text(frame, img, bottom=TEXT_BOTTOM, s=1.0, a=1.0, dx=0.0, dy=0.0):
-    """Bottom-anchored: every block's last ink row (gold rule or last line) sits at the same y; blocks grow upward."""
+def anchor_row(img):
     k = id(img)
     if k not in _TOPS:
         ink = (img[..., 3] > 0.5) & (img[..., :3].max(2) > 0.4)
         _TOPS[k] = int(np.nonzero(ink.any(1))[0][-1])
+    return _TOPS[k]
+
+
+def place_text(frame, img, bottom=TEXT_BOTTOM, s=1.0, a=1.0, dx=0.0, dy=0.0, ref=None):
+    """Bottom-anchored: every block's last ink row (gold rule or last line) sits at the same y; blocks grow upward.
+    ref: the static block image the anchor is measured on (animated copies keep the same position)."""
+    r = anchor_row(img if ref is None else ref)
     h = img.shape[0]
-    cy = P(bottom) - (_TOPS[k] - h / 2) * s
+    cy = P(bottom) - (r - h / 2) * s
     C.place(frame, img, C.W / 2 + dx, cy + dy, s, a)
 
 

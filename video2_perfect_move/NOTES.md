@@ -16,3 +16,10 @@
 - text hits: 0.400 WHEN YOU / FINALLY FIND, 1.700 THE PERFECT / MOVE..., 3.367 I know exactly / what to do., 7.300 MOVE PLAYED., 8.533 THEN PLAYER 2 / MOVES., 11.033 Ok... still fine., 12.767 THEN PLAYER 3 / MOVES., 15.400 Wait., 16.233 That changes / everything., 19.233 YOUR PERFECT / MOVE..., 21.800 JUST GOT / COMPLICATED., 25.700 THREE / OPPONENTS., 27.367 MORE THAN / ONE MOVE / TO WATCH., 30.767 PLAY QUESS.
 - stop-down 15.150-15.400; biggest hit (line 7) 15.400; second peak PLAY QUESS 30.767; duration 33.90
 - audio: -13.5 LUFS integrated, true peak -1.4 dBTP; payoff (line 8 + END) loudest sections; music Silent Descent (default, pick pending)
+
+## 720p preview v2 (treatment pass)
+- Phone mockups (trailer Device, 1.7x texture) on beats 2-7, floating in the real Quess Room footage (defocused), screen glow + glossy floor reflection + rim light in the army colour, subframe motion blur.
+- Hard cuts at every text change; the only dissolve is into the real outro (29.1). Detected cuts in the render: 1.70 2.97 4.70 7.30 8.53 11.03 12.77 15.40 17.97 19.23 20.53 21.80 22.67 23.53 25.70 27.37 (+0.40 hook reframe, 30.77 PLAY QUESS reframe).
+- Wait (15.40): capture as it lands (burst starting, board readable), then the cleared board at 16.23.
+- Bed levelled to a steady -20 dBFS RMS, never thin: every 0.5 s window -19..-11 dBFS except the intended 0.25 s stop-down. Two-pass loudnorm: -14.1 LUFS, TP -3.9 dBTP. Payoff (line 8) loudest.
+- QA: min frame luma 20.5/255 (no near-black frames).

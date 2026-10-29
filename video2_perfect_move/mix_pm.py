@@ -33,16 +33,30 @@ def env(points, n):
     return db(np.interp(t, xs, ys))[:, None].astype(np.float32)
 
 
+def level(bus, target_db=-20.0, win=0.5, max_gain_db=14.0):
+    """Ride the bed to a steady level (no thin spots): smoothed RMS follower, gain clipped to +max_gain_db."""
+    n = len(bus)
+    hop = int(0.05 * SR)
+    m = bus.mean(1)
+    rms = np.array([np.sqrt((m[i:i + hop] ** 2).mean() + 1e-12) for i in range(0, n, hop)])
+    k = max(1, int(win / 0.05))
+    rms = np.convolve(rms, np.ones(k) / k, mode='same')
+    g = np.clip(db(target_db) / rms, db(-12), db(max_gain_db))
+    g = np.interp(np.arange(n), np.arange(len(g)) * hop, g)
+    return bus * g[:, None].astype(np.float32)
+
+
 def music():
     n = int(DUR * SR)
     bus = np.zeros((n, 2), np.float32)
     m = load(os.path.join(S.C.ROOT, 'music', '614.mp3'))
     put(bus, m, 0.0, 1.0, src_from=S.MUSIC_FILE_OFFSET + S.SHIFT)
+    bus = level(bus)                                     # steady, always-present bed (-20 dBFS RMS)
     hit, stop = K['hit'], S.STOP
-    g = env([(0, -60), (0.35, -20), (K['p2'], -20), (K['p2'] + 0.5, -19), (K['p3'], -19),
-             (stop - 0.4, -18), (stop, -44), (hit - 0.01, -46),           # 0.25 s near-silence
-             (hit, -22), (K['react'], -19), (K['l8'] - 0.05, -18),         # comes back under the hit
-             (K['l8'], -8), (K['outro'] - 0.1, -7), (K['outro'] + 0.4, -4), (DUR - 1.0, -4), (DUR, -30)], n)   # payoff = loudest
+    g = env([(0, -30), (0.25, 0), (K['p2'], 0), (K['p3'], 1), (stop - 0.3, 2),
+             (stop, -26), (hit - 0.01, -28),                                   # the 0.25 s stop-down
+             (hit, 0), (K['react'], 1), (K['l8'] - 0.05, 1),
+             (K['l8'], 7), (K['outro'], 8), (DUR - 0.9, 8), (DUR, -10)], n)   # payoff = loudest
     return bus * g
 
 
@@ -66,6 +80,11 @@ def design():
     for t, g in [(K['p1'] + 0.12, 0.35), (land1, 0.55), (K['p2'] + 0.12, 0.35), (K['p2a'] - 0.04, 0.5)]:
         put(bus, sfx('1113'), t, g, align='peak')
         put(bus, sfx('900'), t, g * 0.5, align='peak')
+    # soft whoosh on the camera punch-ins and on the uncaptioned cuts (p1m, react, montage camera moves)
+    for t in (K['p1m'], K['react'], K['c097'], K['burn'], K['qc']):
+        put(bus, sfx('2596'), t, 0.22, align='peak')
+    put(bus, sfx('1113'), K['hit'], 0.5, align='peak')                   # the capture lands on the board
+    put(bus, sfx('900'), K['wct'], 0.3, align='peak')
     # low boom on each army flash (turn starts are cuts on the beat)
     for t, _ in S.TURNS:
         put(bus, sfx('2182'), t, 0.38, align='peak', r=0.8)
@@ -101,7 +120,14 @@ if __name__ == '__main__':
     mix = np.tanh(mix * 1.1) / np.tanh(1.1)
     tmp = out + '.raw.wav'
     wf.write(tmp, SR, mix.astype(np.float32))
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', tmp, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11', '-ar', str(SR),
-                    '-c:a', 'pcm_s16le', out], check=True)
+    # two-pass loudnorm (measured, linear): -14 LUFS integrated, true peak <= -1.5 dBTP
+    r = subprocess.run(['ffmpeg', '-hide_banner', '-i', tmp, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json',
+                        '-f', 'null', '-'], capture_output=True, text=True).stderr
+    import json
+    m = json.loads(r[r.rindex('{'):r.rindex('}') + 1])
+    af = (f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
+          f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', tmp, '-af', af, '-ar', str(SR), '-c:a', 'pcm_s16le', out],
+                   check=True)
     os.remove(tmp)
     print('wrote', out)

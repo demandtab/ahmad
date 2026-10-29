@@ -16,7 +16,7 @@ SRC2 = os.path.join(ROOT, 'src2')
 SEGMENTS = {
     'hook':  ('Game_Quess_Env.mp4', 18.5, 7.0, 30, False),          # EARTH GREEN character over the real board
     'g1':    ('g1.mp4', 18.8, 6.4, 60, True),                       # Quess gameplay (1): FIRE RED turn 19.0-24.6
-    'tra':   ('tra.mp4', 0.0, 8.7, 60, True),                       # Quess Gameplay tra: EARTH GREEN move, AIR GREY capture
+    'tra':   ('tra.mp4', 0.0, 9.0, 60, True),                       # Quess Gameplay tra: EARTH GREEN move, AIR GREY capture, cleared board 8.5
     'react': ('Movie_074.mp4', 0.0, 1.6, 30, False),                # FIRE RED player close-up
     'c096':  ('Movie_096.mp4', 0.3, 3.2, 30, False),                # native 9:16 WATER BLUE knight
     'c097':  ('Movie_097.mp4', 9.8, 3.4, 30, False),                # board-level dolly, EARTH GREEN bishop
@@ -25,6 +25,7 @@ SEGMENTS = {
     'qc':    ('Quess_Character.mp4', 19.8, 4.8, 30, False),         # full 4-army board orbit (pull-out)
     'thr':   ('Movie_079.mp4', 17.6, 4.8, 30, False),               # four players on thrones
     'outro': ('outro.mp4', 0.0, 6.3, 30, False),                    # real outro (asset folder)
+    'room':  ('Quess_Room.mp4', 0.0, 16.0, 30, False),              # real empty Quess game room: the phone arena
 }
 
 

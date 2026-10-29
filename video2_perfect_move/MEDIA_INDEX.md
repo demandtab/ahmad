@@ -86,3 +86,11 @@ Contact sheets at 1 frame / 2 s are kept outside the repo (/home/user/media/shee
 ## Notes
 - NOTE Movie_005/012/013/014/015/017 = same "throne whirlpool" set; close-ups (005 6s+, 012 18-28s, 014 38s) reveal the table is the 4-player BaQugammon board, not Quess -> do NOT use as chess board. Wide shots only as ambience at most.
 - REFERENCE Quess_Trailer_FINAL_Mobile_1080p (Drive 10MdgKFiMvXf5u_UiH-F0kHxnWdnGyJSs) | 1080x1920 29.97 34.5s | low macro board shots (red army foreground, shallow DOF), Cinzel caps top-third with gold rule, warm red / teal split grade, heavy vignette, bokeh, phone UI floating, logo on black + outro end
+
+## Old asset folder (1csaUAoc7SASP4kpulzVibqDZJqyYLVf4) — gameplay, cleared for use by the user
+| File | Format / length | What happens (timestamps) | Best use |
+|---|---|---|---|
+| Quess gameplay (1).mp4 | 1228x720 (low res) 92.7s | REAL online Quess game; player list visible (Teller, John Green, Jacky, Opie; "John" is cropped from "John Green"), turn timers. 0–6 FIRE RED POV opening; 7–16 cinematic cuts; 16.5 "Your Turn"; **19.0–24.6 FIRE RED turn, static camera: piece selected (green legal-move dots) → moves with fire trail → lands**; 25.6 POV switches to AIR GREY; **25.6–28.4 AIR GREY pawn selected ("Pawn" tag, 2 legal squares) → advances two squares**; 28.9–29.5 WATER BLUE piece moves at the far edge (small); 32–35 WATER BLUE character + "Your Turn"; 36–64 CheQuers; 66–92 BaQugammon | beats 2–7 |
+| Quess Gameplay tra.mp4 | 1728x1080 10.8s | Real Quess game, slow orbit: **0.0–2.6 EARTH GREEN piece selected (dots) → moves**; **5.0–8.5 AIR GREY captures a FIRE RED piece with a big cloud burst**; 10.0 "Your Turn" | P3 disruptive capture / line 7 |
+| Family Playing.mp4 | 2560x1440 5.7s | (used in trailer 1) | avoid |
+| recording.mp4 | 1920x1080 56.5s | menus / private room UI (used in trailer 1) | not needed |

@@ -27,9 +27,13 @@ ARMY = {'FIRE RED': (40, 40, 225), 'WATER BLUE': (235, 150, 30), 'EARTH GREEN': 
         'AIR GREY': (200, 200, 200)}
 
 
-def load(name, focus=(0.5, 0.5), zoom=1.0):
+def load(name, focus=(0.5, 0.5), zoom=1.0, band=False):
+    """band=True: landscape board kept whole (fit to width x zoom) over a blurred fill, lifted above the text zone."""
     img = cv2.imread(os.path.join(FR, name + '.jpg')).astype(np.float32) / 255.0
-    f = C.cover(img, focus=focus, zoom=zoom)
+    if band:
+        f = C.band(img, focus=focus, zoom=zoom, dy=-P(260), bg_dim=0.42, feather=160)
+    else:
+        f = C.cover(img, focus=focus, zoom=zoom)
     f = np.clip((f - 0.5) * 1.08 + 0.5 + 0.03, 0, 1)            # light contrast + shadow lift
     blur = cv2.GaussianBlur(f, (0, 0), 1.2)
     return np.clip(f + (f - blur) * 0.8, 0, 1)                  # light sharpening
@@ -50,13 +54,14 @@ def edge_flash(f, bgr, k=0.6):
 EMB = C.Embers(11, 70, size=(2, 5), speed=(60, 160), color=(0.35, 0.6, 1.0), down=3, blur=1.6, gain=0.55)
 
 
-def frame(name, focus, zoom, t, extra=None, narr=None, th=None, flash=None, safe=False):
-    f = load(name, focus, zoom)
+def frame(name, focus, zoom, t, extra=None, narr=None, th=None, flash=None, safe=False, band=False):
+    f = load(name, focus, zoom, band)
     if extra:
         f = extra(f)
     if flash:
         f = edge_flash(f, ARMY[flash], 0.45)
         T.army_sweep(f, ARMY[flash], 0.55)
+    f *= T.text_bed()                                # deep vignette pooling under the bottom text zone
     EMB.draw(f, t)                                   # ember / bokeh depth layer behind the type
     f = C.grade(f, t, sat=1.15, leak=0.06, vig=0.62, grain=0.012, bloom=0.35)
     if narr:
@@ -74,21 +79,29 @@ def frame(name, focus, zoom, t, extra=None, narr=None, th=None, flash=None, safe
 
 
 TILES = [
-    ('1 HOOK  push-in (UI zones in red)', frame('hook', (0.47, 0.55), 1.15, 1.0,
-                                                        narr=('WHEN YOU', 'FINALLY FIND'), safe=True)),
-    ('2 THOUGHT  FIRE RED turn: sweep + spotlight', frame('red_pov', (0.55, 0.6), 1.35, 3.0,
-                                                         extra=lambda f: spotlight(f, 1080, 1700, 520),
-                                                         flash='FIRE RED', th=('I know exactly', 'what to do.'))),
-    ('3 MOVE PLAYED  overhead hold', frame('board_overhead', (0.5, 0.52), 1.0, 5.0, narr=('MOVE PLAYED.',))),
-    ('4 PLAYER 2  WATER BLUE sweep, wide drift', frame('low_blue', (0.42, 0.62), 1.2, 7.0, flash='WATER BLUE',
-                                                       narr=('THEN PLAYER 2', 'MOVES.'))),
-    ('7 IMPACT  sharp, no blur', frame('fire_char', (0.47, 0.5), 1.25, 9.0, flash='EARTH GREEN',
-                                      th=('Wait.', 'That changes everything.'))),
+    ('1 HOOK  push-in (UI zones in red)', frame('hook', (0.47, 0.55), 1.15, 1.0, narr=('WHEN YOU', 'FINALLY FIND'),
+                                                safe=True)),
+    ('2 FIRE RED  BEFORE: piece selected', frame('m1_before', (0.4, 0.52), 1.25, 2.0, band=True, flash='FIRE RED',
+                                                 th=('I know exactly', 'what to do.'))),
+    ('2 FIRE RED  slow-mo move, spotlight', frame('m1_move', (0.42, 0.47), 1.1, 3.0, flash='FIRE RED',
+                                                  extra=lambda f: spotlight(f, 1150, 1500, 700, 0.6))),
+    ('3 AFTER  hold, then punch-in', frame('m1_after', (0.4, 0.52), 1.25, 4.0, band=True,
+                                           narr=('MOVE PLAYED.',))),
+    ('4 EARTH GREEN  sweep, wide drift', frame('m2_before', (0.53, 0.55), 1.35, 5.0, band=True, flash='EARTH GREEN',
+                                               narr=('THEN PLAYER 2', 'MOVES.'))),
+    ('5 changed board  tighter', frame('m2_after', (0.5, 0.5), 1.6, 6.0, band=True,
+                                       th=('Ok... still fine.',))),
+    ('6 AIR GREY  low angle, riser', frame('m3_move', (0.42, 0.45), 1.0, 7.0, flash='AIR GREY',
+                                           narr=('THEN PLAYER 3', 'MOVES.'))),
+    ('7 IMPACT  real capture, sharp', frame('m3_capture', (0.36, 0.42), 1.0, 8.0, flash='AIR GREY',
+                                            th=('Wait.', 'That changes everything.'))),
+    ('7 cut-back  FIRE RED player', frame('react', (0.47, 0.45), 1.0, 9.0, flash='FIRE RED')),
     ('8 CHAOS  native 9:16 hero', frame('chaos1', (0.5, 0.56), 1.0, 11.0, narr=('YOUR PERFECT', 'MOVE...'))),
-    ('8 CHAOS  board-level dolly', frame('chaos2', (0.55, 0.55), 1.0, 12.0, narr=('JUST GOT', 'COMPLICATED.'))),
-    ('8 PULL-OUT  all four armies', frame('chaos3', (0.5, 0.55), 1.0, 13.0)),
-    ('END card  3-line max', frame('thrones', (0.5, 0.55), 1.0, 14.0, narr=('MORE THAN', 'ONE MOVE', 'TO WATCH.'))),
-    ('END  real outro + lines', frame('outro', (0.5, 0.62), 1.0, 15.0, narr=('PLAY QUESS.',))),
+    ('8 CHAOS  board-level dolly', frame('chaos2', (0.55, 0.55), 1.0, 12.0)),
+    ('8 PULL-OUT  all four armies', frame('chaos3', (0.5, 0.55), 1.0, 13.0, narr=('JUST GOT', 'COMPLICATED.'))),
+    ('END  three opponents', frame('thrones', (0.5, 0.55), 1.0, 14.0, narr=('THREE', 'OPPONENTS.'))),
+    ('END card  3-line max', frame('thrones', (0.56, 0.5), 1.15, 14.5, narr=('MORE THAN', 'ONE MOVE', 'TO WATCH.'))),
+    ('END  real outro + PLAY QUESS.', frame('outro', (0.5, 0.62), 1.0, 15.0, narr=('PLAY QUESS.',))),
 ]
 
 if __name__ == '__main__':

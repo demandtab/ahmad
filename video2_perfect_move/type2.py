@@ -115,3 +115,14 @@ def army_sweep(frame, bgr, k, cy=TEXT_BOTTOM - 150):
     xx = np.arange(w, dtype=np.float32) / w
     band = np.exp(-yy[:, None] ** 2) * np.exp(-((xx[None, :] - (k * 1.6 - 0.3)) / 0.22) ** 2)
     frame += band[..., None] * (np.array(bgr, np.float32) / 255.0) * 0.55
+
+
+@functools.lru_cache(maxsize=None)
+def text_bed(k=0.5):
+    """Multiplicative darkening that pools behind the bottom text zone (part of the vignette, not a box)."""
+    yy = np.arange(C.H, dtype=np.float32)
+    y0, y1 = P(TEXT_BOTTOM - 700), P(TEXT_BOTTOM + 200)
+    r = np.clip((yy - y0) / (y1 - y0), 0, 1)
+    prof = 1 - k * np.clip(np.sin(np.pi * r), 0, 1) ** 1.2
+    xx = np.abs(np.arange(C.W, dtype=np.float32) / C.W - 0.5) * 2
+    return (1 - (1 - prof[:, None]) * (1 - 0.35 * xx[None, :] ** 2))[..., None].astype(np.float32)

@@ -346,12 +346,8 @@ def clip_move(name, s0, sp, moves, d, col, smooth=False):
         def at(tt, kk):
             return frame_from(name, s0 + tt * sp, foc, z, dx=P(2 * dx0) * (1 - kk))
         f = at(lt, ks)
-        if 0 < u < 0.6:                                                 # motion trail during the slide
-            f = f * 0.6 + at(lt - 1.5 / FPS, eio(clamp01((u - 1.5 / FPS) / 0.6))) * 0.25 + \
-                at(lt - 3 / FPS, eio(clamp01((u - 3 / FPS) / 0.6))) * 0.15
-        elif smooth:
+        if smooth and u >= 0.6:
             f = f * 0.65 + at(lt - 1.0 / FPS, 1.0) * 0.35
-        burst(f, pxy[0] * U, pxy[1] * U, (u - 0.6) / 0.8, col, r=330, gain=0.55)
         return f
     return fn
 
@@ -378,6 +374,38 @@ def gameplay(name, s0, keys, foc, z0, z1, d, glow=None, pin_left=False):
     return fn
 
 
+def board_on_stars(t, src_t, z, foc=(0.52, 0.54), pieces=(), slide=None):
+    """The real top-down board (Game Quess Env) full width and centred, set on the reel's starry background:
+    the black space above and the red floor below are replaced by stars (no army cut, no bars).
+    pieces: [(army, cell)] placed still; slide: (army, cell_a, cell_b, k) one eased slide, no trail, no glow."""
+    U = W / 1080.0
+    dy = P(2 * BOARD_CY) - H / 2
+    f = frame_from('top', src_t, foc, z, dy=dy)
+    mk = board_mask_out(foc, round(z, 2), dy)
+    f = f * mk + arena_bg(t) * 0.85 * (1 - mk)
+    hpx = int(190 * U * z / 1.27)
+    for army, c in pieces:
+        x, y = to_out('top', foc, z, cell(*c), dy=dy)
+        C.place(f, piece_sprite(PIECE[army], hpx), x, y - hpx * 0.38, 1.0, 1.0)
+    if slide:
+        army, ca, cb, k = slide
+        pa, pb = to_out('top', foc, z, cell(*ca), dy=dy), to_out('top', foc, z, cell(*cb), dy=dy)
+        e = eio(clamp01(k))
+        C.place(f, piece_sprite(PIECE[army], hpx), lerp(pa[0], pb[0], e), lerp(pa[1], pb[1], e) - hpx * 0.38, 1.0, 1.0)
+    return f
+
+
+def board_beat(army, ca, cb, ts, d, z0=1.20, z1=1.26):
+    """One beat on the real board: one piece slides (ease-in-out, 0.8 s), lands on its square (tick), slow push-in."""
+    def fn(lt, t):
+        z = lerp(z0, z1, eio(lt / d))
+        return board_on_stars(t, 0.6 + lt * 0.5, z, slide=(army, ca, cb, (lt - ts) / MOVE_SLIDE))
+    return fn
+
+
+SLIDES = []   # (start key, slide start in the beat) -> landing ticks
+
+
 def shots():
     """(start, end, draw(local_t, t) -> frame, dissolve-in s). Hard cuts on the beat."""
     k_ = K
@@ -385,7 +413,7 @@ def shots():
 
     # 1 HOOK + 2-5: the real top-down board, full-screen; each clip one piece slides one move (eased, glow trail),
     #   lands with a glow burst (+ tick); the camera pushes in on the move. Different framing per clip.
-    out.append((0.0, k_['p1'], hook_shot(HOOK, k_['p1']), 0))
+    out.append((0.0, k_['p1'], lambda lt, t: board_on_stars(t, 0.2 + lt * 0.4, lerp(1.20, 1.26, eio(lt / k_['p1']))), 0))
     G, R, B = ARMY['EARTH GREEN'], ARMY['FIRE RED'], ARMY['WATER BLUE']
     # green figure (green bishop with leaves) - one move
     out.append((k_['p1'], k_['p1a'], clip_move('c096f', 10.2, 0.75, [(0.0, (0.5, 0.50), 1.06, 1.0, 300, (540, 1000))],
@@ -410,22 +438,21 @@ def shots():
         return f
     out.append((k_['hit'], k_['wct'], capture, 0))
     d7 = k_['l8'] - k_['wct']
-    out.append((k_['wct'], k_['l8'], gameplay('g1b', 0.6, [(0.0, 0.6), (0.5, 1.2), (d7, 3.0)], (0.5, 0.52), 1.04, 1.12, d7,
-                                              glow=(0.49, 0.56, d7 - 0.2, ARMY['AIR GREY']), pin_left=True), 0))
-    d8 = k_['cx'] - k_['l8']
-    out.append((k_['l8'], k_['cx'], gameplay('tra', 0.05, [(0.0, 0.05), (d8, 1.9)], (0.5, 0.48), 1.16, 1.32, d8,
-                                             glow=(0.44, 0.36, 1.55, ARMY['EARTH GREEN'])), 0))
-    dc = k_['thr1'] - k_['cx']
-    out.append((k_['cx'], k_['thr1'], gameplay('g1b', 3.0, [(0.0, 3.0), (dc, 4.5)], (0.5, 0.55), 1.04, 1.12, dc,
-                                               pin_left=True), 0))
+    for k0, k1, army, ca, cb in (('wct', 'l8', 'AIR GREY', (6, 12), (6, 9)),
+                                 ('l8', 'cx', 'EARTH GREEN', (7, 1), (7, 4)),
+                                 ('cx', 'thr1', 'WATER BLUE', (1, 7), (4, 7))):
+        dd = k_[k1] - k_[k0]
+        out.append((k_[k0], k_[k1], board_beat(army, ca, cb, 0.25, dd), 0))
+        SLIDES.append(k_[k0] + 0.25 + MOVE_SLIDE)
     # THREE OPPONENTS. / MORE THAN ONE MOVE TO WATCH.: the clean blue knight (v4), two framings
     def knight2(s0, z0, z1, foc):
         def fn(lt, t):
             f = cv2.resize(seq('c096f').at(s0 + lt * 0.7), (W, H), interpolation=cv2.INTER_AREA)
-            return sharpen(C.cover(f, focus=foc, zoom=lerp(z0, z1, eio(lt / 1.3)))) * 0.95 + 0.025
+            f = C.cover(f, focus=foc, zoom=lerp(z0, z1, eio(lt / 1.3)))
+            return np.clip(sharpen(f) * 1.18 + 0.03, 0, None)          # bright, sharp, knight + board floor
         return fn
-    out.append((k_['thr1'], k_['thr2'], knight2(2.3, 1.0, 1.08, (0.5, 0.5)), 0))
-    out.append((k_['thr2'], k_['share'], knight2(3.2, 1.14, 1.22, (0.52, 0.48)), 0))
+    out.append((k_['thr1'], k_['thr2'], knight2(2.0, 1.0, 1.04, (0.5, 0.52)), 0))
+    out.append((k_['thr2'], k_['share'], knight2(3.0, 1.06, 1.10, (0.5, 0.56)), 0))
     # SHARE IT WITH YOUR FRIENDS: clean starry CTA, three equal circles pop in one by one, names below
     out.append((k_['share'], k_['logo'], share, 0))
 
@@ -484,40 +511,57 @@ JOIN = [  # (sprite, name, army, colour, start (s into the beat), from (1080 coo
 SLIDE = 0.5
 
 
+CARDS = [('card_teller_fire_red.png', 'TELLER', 'FIRE RED', 318, 770, 0.25),
+         ('card_john_green_earth_green.png', 'JOHN GREEN', 'EARTH GREEN', 762, 770, 0.85),
+         ('card_jacky_water_blue.png', 'JACKY', 'WATER BLUE', 318, 1300, 1.45),
+         ('card_opie_air_grey.png', 'OPIE', 'AIR GREY', 762, 1300, 2.05)]
+CARD_W = 424          # px at 1080: all four cards equal
+
+
+@functools.lru_cache(maxsize=None)
+def card_img(name, px):
+    im = still_lock(name)[..., :3]
+    im = cv2.resize(im, (px, px), interpolation=cv2.INTER_AREA)
+    im = np.clip(im * 1.25 + 0.02, 0, 1)
+    gold = np.array(C.GOLD_RGB[::-1], np.float32) / 255
+    b = max(2, px // 90)
+    im[:b], im[-b:], im[:, :b], im[:, -b:] = gold, gold, gold, gold          # thin gold frame
+    return np.dstack([im, np.ones((px, px), np.float32)]).astype(np.float32)
+
+
+SPARK_J = C.Embers(57, 40, size=(2, 4), speed=(30, 70), color=(0.45, 0.75, 1.0), down=3, blur=1.0, gain=0.5)
+
+
 def assemble(lt, t):
-    """THEY JOIN: the real rendered pieces slide in from their corners (eased, glow trail), land with a soft
-    burst in their army colour, then their name tags fade in. Base: the real top-down board, slow push-in."""
-    d = K['p3'] - K['join']
-    f = frame_from('top', 1.0 + lt * 0.5, (0.5, 0.56), lerp(1.0, 1.10, eio(lt / d))) * 0.42 + arena_bg(t) * 0.25
+    """THEY JOIN: four equal player cards (2x2) pop in one by one (TELLER, JOHN GREEN, JACKY, OPIE), each with its
+    name and army below; a soft gold shine sweeps across each card once; faint gold sparkles in the background."""
     U = W / 1080.0
-    hpx = int(280 * U)
-    for name, who, army, col, ts, p0, p1 in JOIN:
-        k = (lt - ts) / SLIDE
+    f = arena_bg(t) * 0.85
+    sp = np.zeros_like(f)
+    SPARK_J.draw(sp, t)
+    f += sp * 0.6
+    px = int(CARD_W * U)
+    for name, who, army, x, y, ts in CARDS:
+        k = (lt - ts) / 0.3
         if k <= 0:
             continue
-        spr = piece_sprite(name, hpx)
-        if k < 1:                                                        # glow trail: eased ghost copies
-            for j, back in enumerate((0.20, 0.13, 0.07)):
-                kb = eio(max(0.0, k - back / SLIDE * 0.5))
-                x, y = lerp(p0[0], p1[0], kb) * U, lerp(p0[1], p1[1], kb) * U
-                g = spr.copy()
-                g[..., :3] = g[..., :3] * 0.3 + np.array(col, np.float32) / 255 * 0.7
-                C.place(f, g, x, y, 1.0, 0.28 - j * 0.08)
-        e = eio(min(k, 1.0))
-        x, y = lerp(p0[0], p1[0], e) * U, lerp(p0[1], p1[1], e) * U
-        if k >= 1:                                                       # steady halo once on the board
-            burst(f, x, y + 40 * U, 0.5, col, r=200, gain=0.35)
-        burst(f, x, y + 60 * U, (k - 1.0) * SLIDE / 0.6, col, r=240, gain=0.7)
-        C.place(f, spr, x, y, 1.0, 1.0)
-        a = clamp01((lt - ts - SLIDE - 0.05) / 0.25)
-        if a > 0 and not CLEAN:
-            C.place(f, tag_img((who,), 56, True), x, y + 185 * U, 1.0, a)
-            C.place(f, tag_img((army,), 44, True), x, y + 245 * U, 1.0, a)
+        sc = 1 + 1.7 * (min(k, 1) - 1) ** 3 + 0.7 * (min(k, 1) - 1) ** 2      # pop-in (ease-out-back)
+        img = card_img(name, px).copy()
+        q = (lt - ts - 0.35) / 0.6                                          # one gentle shine sweep
+        if 0 < q < 1.2:
+            xs = np.arange(px, dtype=np.float32)[None, :] + np.arange(px, dtype=np.float32)[:, None] * 0.5
+            band = np.exp(-((xs - (q * 1.4 - 0.2) * px * 1.5) / (px * 0.08)) ** 2) * 0.35
+            img[..., :3] = np.clip(img[..., :3] + band[..., None] * np.array([0.6, 0.85, 1.0], np.float32), 0, 1)
+        C.place(f, img, x * U, y * U, max(0.05, sc), clamp01(k * 2))
+        if not CLEAN:
+            a = clamp01((lt - ts - 0.25) / 0.25)
+            C.place(f, tag_img((who,), 42, True), x * U, (y + 246) * U, 1.0, a)
+            C.place(f, tag_img((army,), 34, True), x * U, (y + 294) * U, 1.0, a)
     return f
 
 
-SHARE = [('card_teller_fire_red.png', 'TELLER', 320, 760), ('card_john_green_earth_green.png', 'JOHN GREEN', 740, 760),
-         ('card_jacky_water_blue.png', 'JACKY', 320, 1220), ('card_opie_air_grey.png', 'OPIE', 740, 1220)]
+SHARE = [('card_teller_fire_red.png', 'TELLER', 310, 790), ('card_john_green_earth_green.png', 'JOHN GREEN', 770, 790),
+         ('card_jacky_water_blue.png', 'JACKY', 310, 1300), ('card_opie_air_grey.png', 'OPIE', 770, 1300)]
 
 
 @functools.lru_cache(maxsize=None)
@@ -543,7 +587,7 @@ def share(lt, t):
     (TELLER, JOHN GREEN, JACKY, OPIE), each with its name clearly below."""
     f = arena_bg(t) * 0.85
     U = W / 1080.0
-    d = int(370 * U)
+    d = int(430 * U)
     for i, (name, who, x, y) in enumerate(SHARE):
         k = (lt - 0.1 - i * 0.3) / 0.3
         if k <= 0:
@@ -551,7 +595,7 @@ def share(lt, t):
         sc = 1 + 1.7 * (min(k, 1) - 1) ** 3 + 0.7 * (min(k, 1) - 1) ** 2
         C.place(f, avatar(name, d), x * U, y * U, max(0.05, sc), clamp01(k * 2))
         if not CLEAN:
-            C.place(f, tag_img((who,), 46, True), x * U, (y + 232) * U, 1.0, clamp01((k - 0.5) * 2.5))
+            C.place(f, tag_img((who,), 46, True), x * U, (y + 262) * U, 1.0, clamp01((k - 0.5) * 2.5))
     return f
 
 
@@ -580,10 +624,9 @@ TEXT = [  # (t0, t1, kind, lines, fx): every text change is a hard cut on a beat
 ]
 TURNS = [(K['p1'], 'EARTH GREEN'), (K['p1a'], 'FIRE RED'), (K['p2'], 'FIRE RED'), (K['p2a'], 'WATER BLUE'),
          (K['p3'], 'AIR GREY')]
-LANDS = ([HOOK['ts'] + MOVE_SLIDE] + [K[k] + 0.6 for k in ('p1', 'p1a', 'p2', 'p2a')] +
-         [K['join'] + j[4] + SLIDE for j in JOIN] +
-         [K['p3'] + (K['hit'] - K['p3']) - 0.05, K['wct'] + (K['l8'] - K['wct']) - 0.2, K['l8'] + 1.55, K['cx'] + 0.9])
-HOOK_HIT_T = HOOK_HIT
+LANDS = ([K[k] + 0.6 for k in ('p1', 'p1a', 'p2', 'p2a')] + SLIDES +
+         [K['p3'] + (K['hit'] - K['p3']) - 0.05])
+HOOK_HIT_T = 0.0
 OPP_FLASH = [(K['thr1'], 'WATER BLUE'), (K['thr1'] + 0.4, 'AIR GREY'), (K['thr1'] + 0.8, 'EARTH GREEN')]
 MONTAGE_HITS = [K['cx']]
 LAND1_T = K['p1'] + 1.2 + (5.1 - 3.7) / (5.2 - 3.7) * 2.1          # FIRE RED piece lands (for the tick SFX)

@@ -4,7 +4,7 @@
 
 Level map (dB vs full): 0-3 full from the first frame | 3-15 the track's own build | 15-24 full |
 24-28 climax (drop exactly at 24.0) | 28-30 -6 under the logo | 30-34.5 stays -6, fades to zero by 34.5.
-SFX (3 kinds only): piece tick on every move landing, capture hit on "WAIT.", logo chime. No whooshes.
+SFX (3 kinds only): piece tick on every move landing, hit on the hook burst and on "WAIT.", logo chime.
 """
 import os
 import sys
@@ -22,7 +22,7 @@ from mix_pm import env, finish  # noqa: E402
 DUR = S.DURATION
 K = S.K
 TRACK_LIFT = 41.192   # #706: the breakdown ends and the full section lifts here (onset + RMS 0.17 -> 0.29)
-MAP = [(0.0, 0), (23.95, 0), (24.0, 2.5), (K['logo'] - 0.1, 2.5), (K['logo'] + 0.3, -6), (DUR - 1.1, -6), (DUR - 0.2, -90), (DUR, -90)]
+MAP = [(0.0, 0), (23.95, 0), (24.0, 2.5), (K['logo'] - 0.1, 2.5), (K['logo'] + 0.3, -6), (DUR - 2.4, -6), (DUR - 0.5, -60), (DUR - 0.25, -90), (DUR, -90)]
 
 
 P_BEAT = 0.4296
@@ -61,6 +61,7 @@ def design():
     for tl in S.LANDS:                                         # piece tick on every landing
         put(bus, sfx('1113'), tl, 0.32, align='peak')
     put(bus, sfx('2150'), K['hit'], 0.40, align='peak')      # capture hit, under the music
+    put(bus, sfx('2150'), S.HOOK_HIT_T, 0.40, align='peak')  # hit on the hook's red glow burst
     put(bus, sfx('3109'), K['logo'], 0.35, align='peak')     # logo chime
     return bus
 

@@ -27,7 +27,9 @@ SEGMENTS = {
     'outro': ('outro.mp4', 0.0, 6.3, 30, False),                    # real outro (asset folder)
     'room':  ('Quess_Room.mp4', 0.0, 16.0, 30, False),              # real empty Quess game room: the phone arena
     'top':   ('Game_Quess_Env.mp4', 32.5, 6.0, 30, False),          # real top-down 4-player board between WATER BLUE and FIRE RED
-    'g1b':   ('g1.mp4', 25.4, 8.6, 60, True),                       # Quess gameplay (1) second half: AIR GREY pawn +2, WATER BLUE move, rich low-angle board
+    'g1b':   ('g1.mp4', 25.4, 8.6, 60, True),
+    'c096f': ('Movie_096.mp4', 0.0, 15.6, 30, False),               # whole portrait take: blue knight 0-4.7, green bishop 10-15
+    'fcp2':  ('French_Chess_pieces.mp4', 5.6, 4.2, 30, False),      # FIRE RED pieces in flames (longer)
 }
 
 

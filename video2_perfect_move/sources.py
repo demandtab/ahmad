@@ -30,6 +30,7 @@ SEGMENTS = {
     'g1b':   ('g1.mp4', 25.4, 8.6, 60, True),
     'c096f': ('Movie_096.mp4', 0.0, 15.6, 30, False),               # whole portrait take: blue knight 0-4.7, green bishop 10-15
     'fcp2':  ('French_Chess_pieces.mp4', 5.6, 4.2, 30, False),      # FIRE RED pieces in flames (longer)
+    'qvo':   ('Quess_video.mp4', 30.6, 3.0, 30, False),             # real overhead board, all four armies (straight top-down)
 }
 
 

@@ -403,6 +403,15 @@ def board_beat(army, ca, cb, ts, d, z0=1.20, z1=1.26):
     return fn
 
 
+def real(name, keys, foc, z0, z1, d, land=None):
+    """A real recorded move, full frame (9:16 cover), centred on the moving piece. Zoom >= 1.2 with the focus low
+    enough that the HUD (player list, timers, camera/settings icons) is outside the frame. No added effects."""
+    def fn(lt, t):
+        z = lerp(z0, z1, eio(lt / d))
+        return full(name, C.remap(lt, keys), foc, z)
+    return fn
+
+
 SLIDES = []   # (start key, slide start in the beat) -> landing ticks
 
 
@@ -415,44 +424,35 @@ def shots():
     #   lands with a glow burst (+ tick); the camera pushes in on the move. Different framing per clip.
     out.append((0.0, k_['p1'], lambda lt, t: board_on_stars(t, 0.2 + lt * 0.4, lerp(1.20, 1.26, eio(lt / k_['p1']))), 0))
     G, R, B = ARMY['EARTH GREEN'], ARMY['FIRE RED'], ARMY['WATER BLUE']
-    # green figure (green bishop with leaves) - one move
-    out.append((k_['p1'], k_['p1a'], clip_move('c096f', 10.2, 0.75, [(0.0, (0.5, 0.50), 1.06, 1.0, 300, (540, 1000))],
-                                               k_['p1a'] - k_['p1'], G), 0))
-    # red glowing pieces - two moves (MOVE PLAYED, then THEN PLAYER 2 MOVES)
-    dr = k_['p2a'] - k_['p1a']
-    out.append((k_['p1a'], k_['p2a'], clip_move('fcp2', 0.2, 0.9, [(0.0, (0.48, 0.55), 1.06, 1.14, -300, (540, 1000)),
-                                                                    (k_['p2'] - k_['p1a'], (0.55, 0.50), 1.30, 1.40, 300, (560, 900))],
-                                                dr, R, smooth=True), 0))
-    # blue knight - one move
+    d = k_['p1a'] - k_['p1']                    # green: EARTH GREEN piece slides (Quess Gameplay tra)
+    out.append((k_['p1'], k_['p1a'], real('tra', [(0.0, 0.05), (d, 1.9)], (0.43, 0.55), 1.22, 1.34, d), 0))
+    d = k_['p2'] - k_['p1a']                    # red: FIRE RED fire-trail move (Quess gameplay (1))
+    out.append((k_['p1a'], k_['p2'], real('g1', [(0.0, 3.3), (d, 5.45)], (0.41, 0.62), 1.22, 1.32, d), 0))
+    d = k_['p2a'] - k_['p2']                    # AIR GREY pawn slides two squares (Quess gameplay (1), later)
+    out.append((k_['p2'], k_['p2a'], real('g1b', [(0.0, 1.0), (d, 3.0)], (0.49, 0.62), 1.22, 1.30, d), 0))
+    # blue glass knight on its board (kept): eased camera move + tick, no trail/burst
     out.append((k_['p2a'], k_['join'], clip_move('c096f', 0.3, 0.6, [(0.0, (0.5, 0.55), 1.14, 1.04, -300, (520, 1000))],
                                                  k_['join'] - k_['p2a'], B), 0))
 
     # THEY JOIN: pieces assemble on the board
     out.append((k_['join'], k_['p3'], assemble, 0))
 
-    # 15-25 s: real recorded gameplay, whole board, one real piece move on every beat
-    d6 = k_['hit'] - k_['p3']
-    out.append((k_['p3'], k_['hit'], gameplay('tra', 3.0, [(0.0, 3.0), (d6, 5.28)], (0.5, 0.5), 1.18, 1.30, d6), 0))
-    def capture(lt, t):
-        f = gameplay('tra', 5.30, [(0.0, 5.30), (2.0, 5.88)], (0.42, 0.47), 1.32, 1.38, 1.3)(lt, t)
-        return f
-    out.append((k_['hit'], k_['wct'], capture, 0))
-    d7 = k_['l8'] - k_['wct']
-    for k0, k1, army, ca, cb in (('wct', 'l8', 'AIR GREY', (6, 12), (6, 9)),
-                                 ('l8', 'cx', 'EARTH GREEN', (7, 1), (7, 4)),
-                                 ('cx', 'thr1', 'WATER BLUE', (1, 7), (4, 7))):
-        dd = k_[k1] - k_[k0]
-        out.append((k_[k0], k_[k1], board_beat(army, ca, cb, 0.25, dd), 0))
-        SLIDES.append(k_[k0] + 0.25 + MOVE_SLIDE)
-    # THREE OPPONENTS. / MORE THAN ONE MOVE TO WATCH.: the clean blue knight (v4), two framings
-    def knight2(s0, z0, z1, foc):
-        def fn(lt, t):
-            f = cv2.resize(seq('c096f').at(s0 + lt * 0.7), (W, H), interpolation=cv2.INTER_AREA)
-            f = C.cover(f, focus=foc, zoom=lerp(z0, z1, eio(lt / 1.3)))
-            return np.clip(sharpen(f) * 1.18 + 0.03, 0, None)          # bright, sharp, knight + board floor
-        return fn
-    out.append((k_['thr1'], k_['thr2'], knight2(2.0, 1.0, 1.04, (0.5, 0.52)), 0))
-    out.append((k_['thr2'], k_['share'], knight2(3.0, 1.06, 1.10, (0.5, 0.56)), 0))
+    # 15.8-25.7 s: real recordings, full frame, a different moment per beat, no added pieces
+    dd = k_['hit'] - k_['p3']
+    out.append((k_['p3'], k_['hit'], real('tra', [(0.0, 3.0), (dd, 5.28)], (0.45, 0.55), 1.22, 1.34, dd), 0))
+    dd = k_['wct'] - k_['hit']
+    out.append((k_['hit'], k_['wct'], real('tra', [(0.0, 5.30), (dd, 5.88)], (0.38, 0.52), 1.34, 1.40, dd), 0))
+    dd = k_['l8'] - k_['wct']
+    out.append((k_['wct'], k_['l8'], real('g1b', [(0.0, 3.0), (dd, 4.6)], (0.50, 0.62), 1.20, 1.28, dd), 0))
+    dd = k_['cx'] - k_['l8']
+    out.append((k_['l8'], k_['cx'], real('g1', [(0.0, 0.3), (dd, 2.85)], (0.40, 0.60), 1.22, 1.34, dd), 0))
+    dd = k_['thr1'] - k_['cx']
+    out.append((k_['cx'], k_['thr1'], real('g1b', [(0.0, 6.4), (dd, 7.6)], (0.55, 0.55), 1.20, 1.28, dd), 0))
+    # THREE OPPONENTS.: the real overhead board, all four armies; MORE THAN ONE MOVE: four armies at start
+    dd = k_['thr2'] - k_['thr1']
+    out.append((k_['thr1'], k_['thr2'], real('qvo', [(0.0, 0.3), (dd, 1.6)], (0.40, 0.50), 1.0, 1.06, dd), 0))
+    dd = k_['share'] - k_['thr2']
+    out.append((k_['thr2'], k_['share'], real('qc', [(0.0, 0.3), (dd, 1.6)], (0.46, 0.55), 1.0, 1.06, dd), 0))
     # SHARE IT WITH YOUR FRIENDS: clean starry CTA, three equal circles pop in one by one, names below
     out.append((k_['share'], k_['logo'], share, 0))
 
@@ -521,14 +521,25 @@ CARD_W = 424          # px at 1080: all four cards equal
 @functools.lru_cache(maxsize=None)
 def card_img(name, px):
     im = still_lock(name)[..., :3]
-    im = cv2.resize(im, (px, px), interpolation=cv2.INTER_AREA)
-    im = np.clip(im * 1.25 + 0.02, 0, 1)
+    h, w = im.shape[:2]
+    cxs = {'card_teller_fire_red.png': 0.51, 'card_john_green_earth_green.png': 0.45,
+           'card_jacky_water_blue.png': 0.60, 'card_opie_air_grey.png': 0.70}
+    cw = int(0.62 * w)                                                 # whole figure (full height), centred
+    x0 = int(min(max(cxs[name] * w - cw / 2, 0), w - cw))
+    col = cv2.resize(im[:, x0:x0 + cw], (int(px * cw / h), px), interpolation=cv2.INTER_AREA)
+    im = np.zeros((px, px, 3), np.float32)
+    ox = (px - col.shape[1]) // 2
+    im[:, ox:ox + col.shape[1]] = col
+    xs = np.abs(np.arange(px, dtype=np.float32) / px - 0.5)
+    side = np.clip(1 - (xs - 0.20) / 0.11, 0, 1) ** 1.5               # neighbours at the edges fade to dark
+    im = np.clip(im * 1.25 + 0.02, 0, 1) * (0.06 + 0.94 * side)[None, :, None]
     gold = np.array(C.GOLD_RGB[::-1], np.float32) / 255
     b = max(2, px // 90)
     im[:b], im[-b:], im[:, :b], im[:, -b:] = gold, gold, gold, gold          # thin gold frame
     return np.dstack([im, np.ones((px, px), np.float32)]).astype(np.float32)
 
 
+WHITE = []          # labels composited after the grade (clean white, not toned)
 SPARK_J = C.Embers(57, 40, size=(2, 4), speed=(30, 70), color=(0.45, 0.75, 1.0), down=3, blur=1.0, gain=0.5)
 
 
@@ -555,23 +566,26 @@ def assemble(lt, t):
         C.place(f, img, x * U, y * U, max(0.05, sc), clamp01(k * 2))
         if not CLEAN:
             a = clamp01((lt - ts - 0.25) / 0.25)
-            C.place(f, tag_img((who,), 42, True), x * U, (y + 246) * U, 1.0, a)
-            C.place(f, tag_img((army,), 34, True), x * U, (y + 294) * U, 1.0, a)
+            WHITE.append((tag_img((who,), 42, True), x * U, (y + 246) * U, a))
+            WHITE.append((tag_img((army,), 34, True), x * U, (y + 294) * U, a))
     return f
 
 
-SHARE = [('card_teller_fire_red.png', 'TELLER', 310, 790), ('card_john_green_earth_green.png', 'JOHN GREEN', 770, 790),
-         ('card_jacky_water_blue.png', 'JACKY', 310, 1300), ('card_opie_air_grey.png', 'OPIE', 770, 1300)]
+SHARE = [('card_teller_fire_red.png', 'TELLER', 300, 780), ('card_john_green_earth_green.png', 'JOHN GREEN', 750, 780),
+         ('card_jacky_water_blue.png', 'JACKY', 300, 1290), ('card_opie_air_grey.png', 'OPIE', 750, 1290)]
 
 
 @functools.lru_cache(maxsize=None)
 def avatar(name, dpx):
     im = still_lock(name)
     h, w = im.shape[:2]
-    side = int(0.46 * w)
-    x0, y0 = (w - side) // 2, int(0.12 * h)
+    side = int(0.46 * w)                                                 # head and shoulders of this player
+    cx = {'card_teller_fire_red.png': 0.51, 'card_john_green_earth_green.png': 0.47,
+          'card_jacky_water_blue.png': 0.58, 'card_opie_air_grey.png': 0.68}[name]
+    x0 = int(min(max(cx * w - side / 2, 0), w - side))
+    y0 = int(0.06 * h)
     c = cv2.resize(im[y0:y0 + side, x0:x0 + side, :3], (dpx, dpx), interpolation=cv2.INTER_AREA)
-    c = np.clip(c * 1.9 + 0.04, 0, 1)                                    # brighten: every avatar clearly readable
+    c = np.clip(c * 1.45 + 0.02, 0, 1)                                   # brighter, never washed out
     c = np.clip(c + (c - cv2.GaussianBlur(c, (0, 0), 1.5)) * 0.6, 0, 1)
     yy, xx = np.mgrid[0:dpx, 0:dpx].astype(np.float32)
     r = np.sqrt((xx - dpx / 2) ** 2 + (yy - dpx / 2) ** 2)
@@ -589,13 +603,13 @@ def share(lt, t):
     U = W / 1080.0
     d = int(430 * U)
     for i, (name, who, x, y) in enumerate(SHARE):
-        k = (lt - 0.1 - i * 0.3) / 0.3
+        k = (lt - 0.05 - i * 0.1) / 0.25
         if k <= 0:
             continue
         sc = 1 + 1.7 * (min(k, 1) - 1) ** 3 + 0.7 * (min(k, 1) - 1) ** 2
         C.place(f, avatar(name, d), x * U, y * U, max(0.05, sc), clamp01(k * 2))
         if not CLEAN:
-            C.place(f, tag_img((who,), 46, True), x * U, (y + 262) * U, 1.0, clamp01((k - 0.5) * 2.5))
+            WHITE.append((tag_img((who,), 50, True), x * U, (y + 268) * U, clamp01((k - 0.5) * 2.5)))
     return f
 
 
@@ -622,10 +636,11 @@ TEXT = [  # (t0, t1, kind, lines, fx): every text change is a hard cut on a beat
     (K['thr2'], K['share'], 'narr', ('MORE THAN', 'ONE MOVE', 'TO WATCH.'), 'reveal'),
     (K['share'], K['logo'], 'narr', ('SHARE IT WITH', 'YOUR FRIENDS'), 'reveal'),
 ]
-TURNS = [(K['p1'], 'EARTH GREEN'), (K['p1a'], 'FIRE RED'), (K['p2'], 'FIRE RED'), (K['p2a'], 'WATER BLUE'),
+TURNS = [(K['p1'], 'EARTH GREEN'), (K['p1a'], 'FIRE RED'), (K['p2'], 'AIR GREY'), (K['p2a'], 'WATER BLUE'),
          (K['p3'], 'AIR GREY')]
-LANDS = ([K[k] + 0.6 for k in ('p1', 'p1a', 'p2', 'p2a')] + SLIDES +
-         [K['p3'] + (K['hit'] - K['p3']) - 0.05])
+_land = lambda k0, k1, s0, s1, sl: K[k0] + (sl - s0) / (s1 - s0) * (K[k1] - K[k0])
+LANDS = [_land('p1', 'p1a', 0.05, 1.9, 1.2), _land('p1a', 'p2', 3.3, 5.45, 5.1), _land('p2', 'p2a', 1.0, 3.0, 2.8),
+         K['p2a'] + 0.6, _land('wct', 'l8', 3.0, 4.6, 4.0), K['hit'] - 0.05]
 HOOK_HIT_T = 0.0
 OPP_FLASH = [(K['thr1'], 'WATER BLUE'), (K['thr1'] + 0.4, 'AIR GREY'), (K['thr1'] + 0.8, 'EARTH GREEN')]
 MONTAGE_HITS = [K['cx']]
@@ -790,6 +805,9 @@ def render(t):
     f = C.grade(f, t, sat=1.12, leak=0.0 if end else 0.06, vig=0.3 if end else 0.62, grain=0.0 if end else 0.012,
                 bloom=0.15 if end else 0.38)
     draw_text(f, t)
+    for img, x, y, al in WHITE:                                       # name labels: after the grade, pure white
+        C.place(f, img, x, y, 1.0, al)
+    WHITE.clear()
     if end and not CLEAN:                                             # end-card label, fades in with the lockup
         lk_h = still('lockup.png').shape[0] * W * 0.98 / still('lockup.png').shape[1]
         C.place(f, label_img(), W / 2, P(HERO_Y) - lk_h / 2 - P(40), 1.0, 1.0)

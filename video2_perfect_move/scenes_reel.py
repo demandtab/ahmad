@@ -125,8 +125,8 @@ N = {  # nominal cut times (snapped to the beat grid)
     'thr2': 26.75, 'logo': 28.0,
 }
 K = {k: S(v) for k, v in N.items()}
-K['card'] = 30.0                                         # end card: exactly 30.0-35.0, static
-DURATION = 35.0
+K['card'] = 30.0                                         # logo 27.97-30.0, end card 30.0-34.0 (no gap)
+DURATION = 34.0
 STOP = K['hit'] - 0.25
 # ------------------------------------------------------------------ phone mockup in a dark 3D arena (trailer Device)
 C.SRC_W, C.SRC_H = 1920, 1080          # the phone screen is 16:9; recordings are fitted inside it untouched
@@ -262,22 +262,22 @@ def shots():
                     spot=(0.36, 0.5), spot_r=700, spot_k=0.25)
     out.append((k_['p1'], k_['p1m'], p1_before, 0))
 
-    # 2 FIRE RED, MOVE: punch-in on the piece, slow motion, spotlight follows it (no text)
+    # 2 FIRE RED, MOVE: whole phone kept in frame (player names fully visible), slow push, spotlight on the piece
     d_m = k_['p1a'] - k_['p1m']
     def p1_move(lt, t):
         k = eio(lt / d_m)
         src = 2.85 + (lt * 0.9 if lt < 0.8 else 0.72 + (lt - 0.8) * (2.0 / max(d_m - 0.8, 0.1)))
         u = eio(seg(src, 3.9, 5.1))
         piece = (lerp(0.35, 0.45, u), lerp(0.47, 0.70, u))
-        return mock('g1', src, [0, 0, lerp(1.2, 0.82, k), lerp(6, 2, k), 5, 0], (lerp(0.37, 0.41, k), lerp(0.50, 0.60, k)),
-                    (1080, HERO_Y), t, RED, spot=piece, spot_r=600, spot_k=0.55)
+        return mock('g1', src, [0, 0, lerp(1.76, 1.66, k), 0, 6, 0], (0.5, 0.5), (1080, HERO_Y), t, RED,
+                    spot=piece, spot_r=600, spot_k=0.5)
     out.append((k_['p1m'], k_['p1a'], p1_move, 0))
 
     # 3 MOVE PLAYED: phone tilts in from the other side, push to the landed piece
     d = k_['p2'] - k_['p1a']
     def p1_after(lt, t):
-        yaw, z = tilt_in(lt, d, -16, 1.75, push=1.25)
-        return mock('g1', min(5.6 + lt * 0.45, 6.3), [0, 0, z, yaw, 6, 0], (0.40, lerp(0.55, 0.60, lt / d)),
+        yaw, z = tilt_in(lt, d, -16, 1.75, push=1.06)
+        return mock('g1', min(5.6 + lt * 0.45, 6.3), [0, 0, z, yaw, 6, 0], (0.5, 0.5),
                     (1080, HERO_Y), t, RED, spot=(0.40, 0.62), spot_r=650, spot_k=0.3)
     out.append((k_['p1a'], k_['p2'], p1_after, 0))
 
@@ -320,14 +320,12 @@ def shots():
     out.append((k_['react'], k_['l8'], lambda lt, t: frame_from('react', lt * 0.13, (0.40, 0.47),
                                                                 lerp(1.0, 1.10, eio(lt / 1.5))), 0))
 
-    # 8 montage under YOUR PERFECT MOVE..., every cut a hit, each a push
+    # 8 YOUR PERFECT MOVE...: ONE piece held for the whole beat (slow motion, slow push), no montage
+    d8 = k_['cx'] - k_['l8']
     def native(lt, t):
-        f = cv2.resize(seq('c096').at(0.2 + lt), (W, H), interpolation=cv2.INTER_AREA)
-        return sharpen(C.cover(f, zoom=lerp(1.0, 1.08, lt / 1.5))) * 0.95 + 0.025
-    out.append((k_['l8'], k_['c097'], native, 0))
-    out.append((k_['c097'], k_['fcp'], lambda lt, t: frame_from('c097', 0.1 + lt, (0.56, 0.52), lerp(1.0, 1.1, lt / 1.5)), 0))
-    out.append((k_['fcp'], k_['burn'], lambda lt, t: frame_from('fcp', 0.1 + lt, (0.5, 0.55), lerp(1.0, 1.08, lt)), 0))
-    out.append((k_['burn'], k_['cx'], lambda lt, t: frame_from('burn', 0.4 + lt * 1.4, (0.5, 0.5), lerp(1.1, 1.18, lt)), 0))
+        f = cv2.resize(seq('c096').at(0.1 + lt * (2.9 / d8)), (W, H), interpolation=cv2.INTER_AREA)
+        return sharpen(C.cover(f, zoom=lerp(1.0, 1.10, eio(lt / d8)))) * 0.95 + 0.025
+    out.append((k_['l8'], k_['cx'], native, 0))
     # climax: ONE real top-down board, push 1.00 -> 1.06
     out.append((k_['cx'], k_['thr1'], lambda lt, t: frame_from('top', 1.0 + lt * 0.6, (0.5, 0.56), lerp(1.0, 1.06, lt / 1.5)), 0))
     # THREE OPPONENTS. / MORE THAN ONE MOVE TO WATCH.: the four players, two framings
@@ -338,11 +336,11 @@ def shots():
     # logo alone: the real Quess Q (from the outro), scale 0.6 -> 1.0 over 0.8 s, fade out 0.2 s
     def logo(lt, t):
         f = arena_bg(t) * 0.8
-        lg = still('logo_q.png')
+        lg = cv2.imread(os.path.join(SRC2, 'lock', 'quess_q_logo.png'), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
         d = K['card'] - K['logo']
-        s_ = lerp(0.6, 1.0, eo3(lt / 0.8)) * P(1.0) / 0.5 * 0.5
-        a = clamp01(lt / 0.15) * (1 - clamp01((lt - (d - 0.2)) / 0.2))
-        C.place(f, lg, W / 2, P(HERO_Y - 160), s_ * 1.2, a)
+        s_ = lerp(0.6, 1.0, eo3(lt / 0.8)) * 0.55 * W / lg.shape[1]      # full Q, w=0.55, never cropped
+        a = clamp01(lt / 0.15)
+        C.place(f, lg, W / 2, H * 900 / 1920, s_, a)
         return f
     out.append((k_['logo'], K['card'], logo, 0))
 
@@ -350,7 +348,7 @@ def shots():
     def card(lt, t):
         f = arena_bg(0.0) * 0.8
         lk = still('lockup.png')
-        a = clamp01(lt / 0.3)
+        a = 1.0                                  # straight cut from the logo: no black frame
         lk4 = np.dstack([lk[..., :3], np.ones(lk.shape[:2], np.float32)])
         C.place(f, lk4, W / 2, P(HERO_Y), W * 0.98 / lk.shape[1], a)
         return f
@@ -366,15 +364,15 @@ def ei(x):
 SHOTS = shots()
 
 TEXT = [  # (t0, t1, kind, lines, fx): every text change is a hard cut on a beat
-    (K['h1'], K['h2'], 'narr', ('WHEN YOU', 'FINALLY FIND'), 'embers'),
+    (K['h1'], K['h2'], 'narr', ('WHEN YOU', 'FINALLY FIND'), 'reveal'),
     (K['h2'], K['p1'], 'narr', ('THE PERFECT', 'MOVE...'), 'reveal'),
-    (K['p1'], K['p1m'], 'thought', ('I know exactly', 'what to do.'), 'reveal'),
+    (K['p1'], K['p1a'], 'thought', ('I know exactly', 'what to do.'), 'reveal'),
     (K['p1a'], K['p2'], 'narr', ('MOVE PLAYED.',), 'glow'),
     (K['p2'], K['p2a'], 'narr', ('THEN PLAYER 2', 'MOVES.'), 'reveal'),
     (K['p2a'], K['p3'], 'thought', ('Ok... still fine.',), 'reveal'),
     (K['p3'], K['hit'], 'narr', ('THEN PLAYER 3', 'MOVES.'), 'reveal'),
-    (K['hit'], K['wct'], 'thought', ('Wait.',), 'hard'),
-    (K['wct'], K['react'], 'thought', ('That changes', 'everything.'), 'hard'),
+    (K['hit'], K['wct'], 'narr', ('WAIT.',), 'hard'),
+    (K['wct'], K['react'], 'narr', ('THAT', 'CHANGES', 'EVERYTHING.'), 'hard'),
     (K['l8'], K['cx'], 'narr', ('YOUR PERFECT', 'MOVE...'), 'wipe'),
     (K['cx'], K['thr1'], 'narr', ('JUST GOT', 'COMPLICATED.'), 'hard'),
     (K['thr1'], K['thr2'], 'narr', ('THREE', 'OPPONENTS.'), 'reveal'),
@@ -382,7 +380,7 @@ TEXT = [  # (t0, t1, kind, lines, fx): every text change is a hard cut on a beat
 ]
 TURNS = [(K['p1'], 'FIRE RED'), (K['p2'], 'EARTH GREEN'), (K['p3'], 'AIR GREY')]
 OPP_FLASH = [(K['thr1'], 'WATER BLUE'), (K['thr1'] + 0.4, 'AIR GREY'), (K['thr1'] + 0.8, 'EARTH GREEN')]
-MONTAGE_HITS = [K['l8'], K['c097'], K['fcp'], K['burn'], K['cx']]
+MONTAGE_HITS = [K['l8'], K['cx']]
 
 
 @functools.lru_cache(maxsize=None)
@@ -444,12 +442,9 @@ def draw_text(f, t):
                 continue
             tau = (tau - 0.38) * 1.6
         im = img.copy()
-        alpha = np.zeros(h, np.float32)
-        for i, (r0, r1) in enumerate(groups):
-            alpha[max(0, r0 - int(P(40))):r1 + int(P(40))] = eo3((tau - i * 0.10) / 0.22)
-        alpha[groups[-1][1] + int(P(40)):] = eo3((tau - (len(groups) - 1) * 0.10) / 0.22)
-        scale = 1.0 + 0.12 * (1 - eo3(tau / 0.22))
-        blur = 1 - eo3(tau / 0.26)
+        alpha = np.ones(h, np.float32)          # hard cut in: full opacity from the first frame, no crossfade
+        scale = 1.0 + 0.08 * (1 - eo3(tau / 0.25))
+        blur = 0.0
         if fx == 'wipe':                       # capture-slam wipe
             q = eo3(tau / 0.28)
             xs_ = np.arange(w, dtype=np.float32)
@@ -539,7 +534,7 @@ def render(t):
     draw_text(f, t)
     if end and not CLEAN:                                             # end-card label, fades in with the lockup
         lk_h = still('lockup.png').shape[0] * W * 0.98 / still('lockup.png').shape[1]
-        C.place(f, label_img(), W / 2, P(HERO_Y) - lk_h / 2 - P(40), 1.0, clamp01((t - K['card']) / 0.3))
+        C.place(f, label_img(), W / 2, P(HERO_Y) - lk_h / 2 - P(40), 1.0, 1.0)
     if t < 0.25:                                                      # opening fade in 0.25 s
         f *= eio(t / 0.25)
     return f

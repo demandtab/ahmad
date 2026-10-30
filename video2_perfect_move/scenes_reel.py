@@ -72,7 +72,7 @@ class Seq:
 
 @functools.lru_cache(maxsize=None)
 def seq(name):
-    return Seq(name, 60 if name in ('g1', 'tra') else 30)
+    return Seq(name, 60 if name in ('g1', 'tra', 'g1b') else 30)
 
 
 def sharpen(f, k=0.55):
@@ -273,61 +273,40 @@ def shots():
                     spot=piece, spot_r=600, spot_k=0.5)
     out.append((k_['p1m'], k_['p1a'], p1_move, 0))
 
-    # 3 MOVE PLAYED: phone tilts in from the other side, push to the landed piece
-    d = k_['p2'] - k_['p1a']
-    def p1_after(lt, t):
-        yaw, z = tilt_in(lt, d, -16, 1.75, push=1.06)
-        return mock('g1', min(5.6 + lt * 0.45, 6.3), [0, 0, z, yaw, 6, 0], (0.5, 0.5),
-                    (1080, HERO_Y), t, RED, spot=(0.40, 0.62), spot_r=650, spot_k=0.3)
-    out.append((k_['p1a'], k_['p2'], p1_after, 0))
+    # --- zoomed animation clips, no device frame: red pieces, blue knight, overhead board (push/zoom)
+    def anim(name, s0, sp, foc, z0, z1):
+        def fn(lt, t, name=name, s0=s0, sp=sp, foc=foc, z0=z0, z1=z1):
+            d = 1.8
+            return frame_from(name, s0 + lt * sp, foc, lerp(z0, z1, eio(min(lt / d, 1.0))))
+        return fn
+    out.append((k_['p1a'], k_['p2'], anim('fcp', 0.1, 0.9, (0.5, 0.55), 1.0, 1.14), 0))       # MOVE PLAYED: FIRE RED pieces
+    def knight(lt, t):
+        f = cv2.resize(seq('c096').at(0.1 + lt * 0.8), (W, H), interpolation=cv2.INTER_AREA)
+        return sharpen(C.cover(f, zoom=lerp(1.0, 1.14, eio(lt / 1.7)))) * 0.95 + 0.025
+    out.append((k_['p2'], k_['p2a'], knight, 0))                                              # THEN PLAYER 2: blue knight
+    out.append((k_['p2a'], k_['p3'], anim('top', 1.0, 0.6, (0.5, 0.56), 1.0, 1.10), 0))       # Ok... still fine: overhead
 
-    # 4 EARTH GREEN: tilt-in, then punch-in on the move in slow motion
-    d2 = k_['p2a'] - k_['p2']
-    def p2_move(lt, t):
-        src = 0.05 + lt * 0.18 if lt < 0.8 else 0.194 + (lt - 0.8) * (1.0 / max(d2 - 0.8, 0.1))
-        yaw, z = tilt_in(lt, d2, 18, 1.85, push=1.5, settle=0.8)
-        u = seg(src, 0.25, 1.2)
-        piece = (lerp(0.40, 0.44, u), lerp(0.46, 0.36, u))
-        return mock('tra', src, [0, 0, z, yaw, 8, 0], (lerp(0.47, 0.42, lt / d2), lerp(0.50, 0.42, lt / d2)),
-                    (1080, HERO_Y), t, GREEN, spot=piece, spot_r=560, spot_k=0.5)
-    out.append((k_['p2'], k_['p2a'], p2_move, 0))
-
-    # 5 "Ok... still fine.": the changed board, phone tilts in from the left, slow push
-    d5 = k_['p3'] - k_['p2a']
-    def p2_after(lt, t):
-        yaw, z = tilt_in(lt, d5, -16, 1.6, push=1.08)
-        return mock('tra', 1.25 + lt * 0.95, [0, 0, z, yaw, 5, 0], (0.46, 0.50), (1080, HERO_Y), t, GREEN)
-    out.append((k_['p2a'], k_['p3'], p2_after, 0))
-
-    # 6 AIR GREY: low angle, push into the capture
+    # --- real gameplay, full board, no mockup (band over a blurred fill of the same footage, no dead space)
+    def board(name, s0, sp, foc, z0, z1, d, pin_left=False):
+        def fn(lt, t, name=name, s0=s0, sp=sp, foc=foc, z0=z0, z1=z1, d=d):
+            z = lerp(z0, z1, eio(lt / d))
+            fx = 0.5 / z if pin_left else foc[0]          # pin the left edge: the player list is never cut
+            return frame_from(name, s0 + lt * sp, (fx, foc[1]), z, band=True, dy=P(460))
+        return fn
     d6 = k_['hit'] - k_['p3']
-    def p3_in(lt, t):
-        k = lt / d6
-        src = 3.0 + lt * (2.3 / d6)
-        return mock('tra', src, [0, 0, lerp(1.8, 1.25, ei(k)), lerp(14, 6, k), lerp(-12, -6, k), 0],
-                    (lerp(0.42, 0.36, k), lerp(0.48, 0.42, k)), (1080, HERO_Y), t, GREY)
-    out.append((k_['p3'], k_['hit'], p3_in, 0))
-
-    # 7 "Wait.": the capture as it lands, board readable (burst only starting), sharp
-    out.append((k_['hit'], k_['wct'], lambda lt, t: mock('tra', 5.30 + lt * 0.29, [0, 0, lerp(0.92, 0.86, lt), 2, 3, 0],
-                                                          (0.36, 0.44), (1080, HERO_Y), t, GREY), 0))
-    # 7 "That changes everything.": the cleared board, push
+    out.append((k_['p3'], k_['hit'], board('tra', 3.0, 2.3 / d6, (0.47, 0.50), 1.30, 1.40, d6), 0))        # AIR GREY approaches
+    out.append((k_['hit'], k_['wct'], board('tra', 5.30, 0.29, (0.40, 0.46), 1.55, 1.60, 1.14), 0))         # WAIT.: the capture
     d7 = k_['react'] - k_['wct']
-    out.append((k_['wct'], k_['react'], lambda lt, t: mock('tra', 8.48 + lt * 0.2, [0, 0, lerp(1.45, 1.2, eio(lt / d7)), -4, 6, 0],
-                                                            (0.42, 0.48), (1080, HERO_Y), t, GREY,
-                                                            spot=(0.34, 0.42), spot_r=750, spot_k=0.3), 0))
+    out.append((k_['wct'], k_['react'], board('tra', 8.48, 0.2, (0.47, 0.50), 1.40, 1.30, d7), 0))          # cleared board
     # 7 cut-back to the FIRE RED player (no text)
     out.append((k_['react'], k_['l8'], lambda lt, t: frame_from('react', lt * 0.13, (0.40, 0.47),
                                                                 lerp(1.0, 1.10, eio(lt / 1.5))), 0))
 
-    # 8 YOUR PERFECT MOVE...: ONE piece held for the whole beat (slow motion, slow push), no montage
+    # 8 YOUR PERFECT MOVE...: real gameplay, second half of Quess gameplay (1): AIR GREY pawn selected, moves +2
     d8 = k_['cx'] - k_['l8']
-    def native(lt, t):
-        f = cv2.resize(seq('c096').at(0.1 + lt * (2.9 / d8)), (W, H), interpolation=cv2.INTER_AREA)
-        return sharpen(C.cover(f, zoom=lerp(1.0, 1.10, eio(lt / d8)))) * 0.95 + 0.025
-    out.append((k_['l8'], k_['cx'], native, 0))
-    # climax: ONE real top-down board, push 1.00 -> 1.06
-    out.append((k_['cx'], k_['thr1'], lambda lt, t: frame_from('top', 1.0 + lt * 0.6, (0.5, 0.56), lerp(1.0, 1.06, lt / 1.5)), 0))
+    out.append((k_['l8'], k_['cx'], board('g1b', 0.5, 3.1 / d8, (0.5, 0.52), 1.0, 1.10, d8, pin_left=True), 0))
+    # climax: the rich low-angle board with the WATER BLUE portal (same recording), push
+    out.append((k_['cx'], k_['thr1'], board('g1b', 6.4, 1.0, (0.5, 0.55), 1.05, 1.14, 1.7, pin_left=True), 0))
     # THREE OPPONENTS. / MORE THAN ONE MOVE TO WATCH.: the four players, two framings
     out.append((k_['thr1'], k_['thr2'], lambda lt, t: frame_from('thr', 1.8 + lt, (0.5, 0.62), lerp(1.0, 1.06, lt / 1.3)), 0))
     out.append((k_['thr2'], k_['logo'], lambda lt, t: frame_from('thr', 3.47 + lt * 0.76, (0.40, 0.58),
@@ -353,7 +332,7 @@ def shots():
         C.place(f, lk4, W / 2, P(HERO_Y), W * 0.98 / lk.shape[1], a)
         return f
     out.append((K['card'], DURATION, card, 0))
-    MOCK.update(range(3, 11))
+    MOCK.update({3, 4})          # only two mockup shots (p1 before + move), 3.96 s in total
     return out
 
 

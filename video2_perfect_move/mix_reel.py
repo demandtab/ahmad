@@ -1,4 +1,4 @@
-"""Soundtrack for the reel cut: ONE track (Mixkit "Epic Games" #76, its drop on 24.0) + four soft SFX.
+"""Soundtrack for the reel cut: ONE track (Mixkit "Games Music" #706, its lift on 24.0) + four soft SFX.
 
   python3 mix_reel.py out.wav
 
@@ -21,13 +21,14 @@ from mix_pm import env, finish  # noqa: E402
 
 DUR = S.DURATION
 K = S.K
+TRACK_LIFT = 41.192   # #706: the breakdown ends and the full section lifts here (onset + RMS 0.17 -> 0.29)
 MAP = [(0.0, 0), (23.95, 0), (24.0, 2.5), (K['logo'] - 0.1, 2.5), (K['logo'] + 0.3, -6), (32.9, -6), (33.8, -90), (34.0, -90)]
 
 
 def music():
     n = int(DUR * SR)
     bus = np.zeros((n, 2), np.float32)
-    put(bus, load(os.path.join(S.C.ROOT, 'music', '76.mp3')), 0.0, 1.0, src_from=S.MUSIC_FILE_OFFSET)
+    put(bus, load(os.path.join(S.C.ROOT, 'music', '706.mp3')), 0.0, 1.0, src_from=TRACK_LIFT - 24.0)
     k = int(0.03 * SR)
     bus[:k] *= np.linspace(0, 1, k)[:, None]
     return bus * env(MAP, n)

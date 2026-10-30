@@ -26,6 +26,7 @@ SEGMENTS = {
     'thr':   ('Movie_079.mp4', 17.6, 4.8, 30, False),               # four players on thrones
     'outro': ('outro.mp4', 0.0, 6.3, 30, False),                    # real outro (asset folder)
     'room':  ('Quess_Room.mp4', 0.0, 16.0, 30, False),              # real empty Quess game room: the phone arena
+    'top':   ('Game_Quess_Env.mp4', 32.5, 6.0, 30, False),          # real top-down 4-player board between WATER BLUE and FIRE RED
 }
 
 

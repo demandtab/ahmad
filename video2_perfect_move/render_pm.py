@@ -11,7 +11,8 @@ from multiprocessing import Process
 import cv2
 import numpy as np
 
-import scenes_pm as S
+import importlib
+S = importlib.import_module(os.environ.get('SCENES_MOD', 'scenes_pm'))
 import common as C
 
 

@@ -26,12 +26,14 @@ SRC2 = os.path.join(C.ROOT, 'src2')
 CLEAN = os.environ.get('CLEAN') == '1'          # textless version
 
 # ------------------------------------------------------------------ beat grid (SNAP)
+# v2-fix lock: fixed 120 BPM grid (a beat every 0.5 s) so a generated 34 s track can be cut to it exactly;
+# climax hit 21.0, second hit 26.0, logo 29.0, total 34.0 s.
 BEATS = json.load(open(os.path.join(HERE, 'beats_614.json')))
-MUSIC_FILE_OFFSET = BEATS['offset']               # excerpt start inside Mixkit #614
-LIFT_EXCERPT = 22.0                               # the track's lift (excerpt time), placed on line 8
-LINE8 = 19.3                                      # nominal start of line 8 (payoff)
-SHIFT = LIFT_EXCERPT - LINE8                      # music starts SHIFT s later in the excerpt
-VBEATS = np.array([b - SHIFT for b in BEATS['beats'] if b - SHIFT > -0.01])
+MUSIC_FILE_OFFSET = BEATS['offset']               # placeholder bed: excerpt start inside Mixkit #614
+LIFT_EXCERPT = 22.0                               # the placeholder's lift (excerpt time), placed on the climax
+LINE8 = 21.0                                      # climax: YOUR PERFECT MOVE...
+SHIFT = LIFT_EXCERPT - LINE8
+VBEATS = np.arange(0.0, 34.01, 0.5)
 
 
 def S(t):
@@ -112,14 +114,14 @@ def edge_mask():
 
 # ------------------------------------------------------------------ timeline (nominal -> snapped)
 N = {  # nominal cut times
-    'p1': 3.0, 'p1m': 4.7, 'p1a': 7.3, 'p2': 8.6, 'p2a': 10.9, 'p3': 12.6, 'hit': 15.25, 'react': 18.0,
-    'l8': LINE8, 'c097': 20.6, 'fcp': 21.8, 'burn': 22.7, 'qc': 23.6, 'end': 25.6, 'outro': 29.0,
-    'h1': 0.45, 'h2': 1.75, 'thr2': 27.3,
+    'p1': 3.0, 'p1m': 4.5, 'p1a': 7.5, 'p2': 8.5, 'p2a': 11.0, 'p3': 12.5, 'hit': 15.0, 'react': 19.0,
+    'l8': LINE8, 'c097': 22.0, 'fcp': 23.0, 'burn': 23.5, 'qc': 24.0, 'end': 26.0, 'outro': 29.0,
+    'h1': 0.5, 'h2': 1.5, 'thr2': 27.5,
 }
 K = {k: S(v) for k, v in N.items()}
-K['wct'] = S(K['hit'] + 0.86)                            # "That changes everything." (next beat after the hit)
-K['pq'] = S(K['outro'] + 2.6)                            # PLAY QUESS. (after the outro lockup settles)
-DURATION = round((K['outro'] + 4.8) * FPS) / FPS
+K['wct'] = S(K['hit'] + 1.0)                             # "That changes everything."
+K['pq'] = S(K['outro'] + 2.5)                            # PLAY QUESS. (after the outro lockup settles)
+DURATION = 34.0
 STOP = K['hit'] - 0.25                                   # 0.25 s stop-down before the hit
 
 
@@ -307,7 +309,7 @@ def shots():
 
     # 7 cut-back to the FIRE RED player (no text)
     def react(lt, t):
-        return frame_from('react', lt * 0.35, (0.40, 0.47), lerp(1.0, 1.14, eio(lt / (K['l8'] - K['react']))))
+        return frame_from('react', lt * 0.13, (0.40, 0.47), lerp(1.0, 1.14, eio(lt / (K['l8'] - K['react']))))
     out.append((K['react'], K['l8'], react, 0))
 
     # 8 chaos montage: hard cuts on the beat

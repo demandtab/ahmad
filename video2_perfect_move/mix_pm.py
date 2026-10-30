@@ -1,10 +1,13 @@
-"""Soundtrack for "The Perfect Move": Mixkit "Silent Descent" (#614) bed + sound design on the beat grid.
+"""Soundtrack for "The Perfect Move" to the v2-fix [AUDIO] map: ONE music track + exactly THREE sound effects.
 
-  python3 mix_pm.py out.wav
+  python3 mix_pm.py out.wav                      # placeholder bed: Mixkit "Silent Descent" (#614), lift on 21.0
+  python3 mix_pm.py out.wav track.wav [start_s]  # the client's generated 34 s track (no levelling, map only)
 
-Reuses trailer/mix.py (loader, peak alignment, synthesised sub-drop). Arc: calm (1-3), unease (4-5),
-riser (6), 0.25 s stop-down, impact + sub on line 7 (the biggest hit), full energy into the logo (loudest).
+Level map (dB relative to full level): 0-3 -6 | 3-11 slow rise to 0 | 11-21 0 | 21-29 0 (climax, hits 21.0 and 26.0
+in the track) | 29-32 -6 under the end card | 32-33.5 fade to silence. SFX: 11.0 tick, 21.0 capture hit, 29.0 chime.
+Final: -14 LUFS integrated, true peak <= -1.5 dBTP (two-pass loudnorm, linear).
 """
+import json
 import os
 import subprocess
 import sys
@@ -15,11 +18,10 @@ import scipy.io.wavfile as wf
 os.environ.setdefault('SC', '0.25')
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', 'trailer'))
-from mix import SR, load, sfx, put, synth_sub  # noqa: E402
+from mix import SR, load, sfx, put  # noqa: E402
 import scenes_pm as S  # noqa: E402
 
-DUR = S.DURATION
-K = S.K
+DUR = S.DURATION   # 34.0
 
 
 def db(x):
@@ -27,14 +29,13 @@ def db(x):
 
 
 def env(points, n):
-    """Piecewise-linear gain envelope over [(t, dB), ...]."""
     t = np.arange(n) / SR
     xs, ys = zip(*points)
     return db(np.interp(t, xs, ys))[:, None].astype(np.float32)
 
 
-def level(bus, target_db=-20.0, win=0.5, max_gain_db=14.0):
-    """Ride the bed to a steady level (no thin spots): smoothed RMS follower, gain clipped to +max_gain_db."""
+def level(bus, target_db=-18.0, win=1.5, max_gain_db=10.0):
+    """Placeholder only: ride the Mixkit bed to a steady level so the map, not the track, shapes it."""
     n = len(bus)
     hop = int(0.05 * SR)
     m = bus.mean(1)
@@ -42,92 +43,49 @@ def level(bus, target_db=-20.0, win=0.5, max_gain_db=14.0):
     k = max(1, int(win / 0.05))
     rms = np.convolve(rms, np.ones(k) / k, mode='same')
     g = np.clip(db(target_db) / rms, db(-12), db(max_gain_db))
-    g = np.interp(np.arange(n), np.arange(len(g)) * hop, g)
-    return bus * g[:, None].astype(np.float32)
+    return bus * np.interp(np.arange(n), np.arange(len(g)) * hop, g)[:, None].astype(np.float32)
 
 
-def music():
+MAP = [(0.0, -6), (3.0, -6), (11.0, 0), (21.0, 0), (29.0, 0), (29.25, -6), (32.0, -6), (33.5, -90), (34.0, -90)]
+
+
+def music(track=None, start=0.0):
     n = int(DUR * SR)
     bus = np.zeros((n, 2), np.float32)
-    m = load(os.path.join(S.C.ROOT, 'music', '614.mp3'))
-    put(bus, m, 0.0, 1.0, src_from=S.MUSIC_FILE_OFFSET + S.SHIFT)
-    bus = level(bus)                                     # steady, always-present bed (-20 dBFS RMS)
-    hit, stop = K['hit'], S.STOP
-    g = env([(0, -30), (0.25, 0), (K['p2'], 0), (K['p3'], 1), (stop - 0.3, 2),
-             (stop, -26), (hit - 0.01, -28),                                   # the 0.25 s stop-down
-             (hit, 0), (K['react'], 1), (K['l8'] - 0.05, 1),
-             (K['l8'], 7), (K['outro'], 8), (DUR - 0.9, 8), (DUR, -10)], n)   # payoff = loudest
-    return bus * g
+    if track:
+        put(bus, load(track), 0.0, 1.0, src_from=start)
+    else:
+        put(bus, load(os.path.join(S.C.ROOT, 'music', '614.mp3')), 0.0, 1.0, src_from=S.MUSIC_FILE_OFFSET + S.SHIFT)
+    k = int(0.02 * SR)
+    bus[:k] *= np.linspace(0, 1, k)[:, None]
+    return bus * env(MAP, n)
 
 
 def design():
     n = int(DUR * SR)
     bus = np.zeros((n, 2), np.float32)
-    snap = S.S
-    # whoosh on every caption (peak on the text hit, which is on the beat)
-    wh = ['1489', '2596', '1491']
-    for i, (t0, t1, kind, lines, fx) in enumerate(S.TEXT):
-        if fx == 'hard':
-            continue
-        g = 0.32 if kind == 'narr' else 0.24
-        if t0 >= K['l8']:
-            g = 0.42
-        put(bus, sfx(wh[i % 3]), t0, g, align='peak')
-    # soft wooden clicks on the real move frames (selection + landing)
-    p1m, p1a = K['p1m'], K['p1a']
-    d_m = p1a - p1m
-    land1 = p1m + 1.0 + (5.1 - 3.75) * (d_m - 1.0) / 1.85
-    for t, g in [(K['p1'] + 0.12, 0.35), (land1, 0.55), (K['p2'] + 0.12, 0.35), (K['p2a'] - 0.04, 0.5)]:
-        put(bus, sfx('1113'), t, g, align='peak')
-        put(bus, sfx('900'), t, g * 0.5, align='peak')
-    # soft whoosh on the camera punch-ins and on the uncaptioned cuts (p1m, react, montage camera moves)
-    for t in (K['p1m'], K['react'], K['c097'], K['burn'], K['qc']):
-        put(bus, sfx('2596'), t, 0.22, align='peak')
-    put(bus, sfx('1113'), K['hit'], 0.5, align='peak')                   # the capture lands on the board
-    put(bus, sfx('900'), K['wct'], 0.3, align='peak')
-    # low boom on each army flash (turn starts are cuts on the beat)
-    for t, _ in S.TURNS:
-        put(bus, sfx('2182'), t, 0.38, align='peak', r=0.8)
-    # riser into line 7, peaking at the stop-down; then 0.25 s near-silence; then the biggest hit
-    put(bus, sfx('2900'), S.STOP, 0.32, align='peak', fade_out=0.05)
-    put(bus, sfx('2150'), K['hit'], 1.0, align='peak')
-    put(bus, sfx('788'), K['hit'], 0.8, align='peak')
-    put(bus, synth_sub(1.6, 52), K['hit'], 0.9)
-    put(bus, sfx('1491'), K['hit'] + 0.86, 0.3, align='peak')          # "That changes everything." lands
-    # hits on every montage cut
-    for t in S.MONTAGE_HITS:
-        put(bus, sfx('2908'), t, 0.75, align='peak')
-        put(bus, sfx('2182'), t, 0.5, align='peak')
-    put(bus, synth_sub(1.2, 58), K['l8'], 0.6)
-    # into the logo: impact on the outro cut, sting on PLAY QUESS (second peak)
-    put(bus, sfx('2182'), K['outro'], 0.55, align='peak')
-    pq = S.TEXT[-1][0]
-    put(bus, sfx('2150'), pq, 0.85, align='peak')
-    put(bus, sfx('3109'), pq, 0.55, align='peak')
-    put(bus, synth_sub(1.4, 55), pq, 0.7)
-    for t in (K['outro'] + 0.9, K['outro'] + 3.2):                     # keep the end card driving into the logo
-        put(bus, sfx('2908'), t, 0.6, align='peak')
-    i0, i1 = int(S.STOP * SR), int(K['hit'] * SR) - int(0.012 * SR)
-    bus[i0:i1] *= 0.04                                                    # the 0.25 s stop-down stays near-silent
-    bus[int(K['p3'] * SR):i0] *= 0.72                                      # tension sits under the payoff
-    bus[int(K['hit'] * SR) + int(0.5 * SR):int(K['l8'] * SR)] *= 0.7       # hit tail; payoff stays the loudest part
+    put(bus, sfx('1113'), 11.0, 0.30, align='peak')    # soft piece-placement tick
+    put(bus, sfx('2150'), 21.0, 0.32, align='peak')    # capture hit on the drum hit, under the music
+    put(bus, sfx('3109'), 29.0, 0.30, align='peak')    # soft logo chime
     return bus
 
 
-if __name__ == '__main__':
-    out = sys.argv[1]
-    mix = music() + design() * 0.8
-    mix = np.tanh(mix * 1.1) / np.tanh(1.1)
+def finish(mix, out):
     tmp = out + '.raw.wav'
     wf.write(tmp, SR, mix.astype(np.float32))
-    # two-pass loudnorm (measured, linear): -14 LUFS integrated, true peak <= -1.5 dBTP
     r = subprocess.run(['ffmpeg', '-hide_banner', '-i', tmp, '-af', 'loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json',
                         '-f', 'null', '-'], capture_output=True, text=True).stderr
-    import json
     m = json.loads(r[r.rindex('{'):r.rindex('}') + 1])
     af = (f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
           f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', tmp, '-af', af, '-ar', str(SR), '-c:a', 'pcm_s16le', out],
                    check=True)
     os.remove(tmp)
+
+
+if __name__ == '__main__':
+    out = sys.argv[1]
+    track = sys.argv[2] if len(sys.argv) > 2 else None
+    mix = music(track, float(sys.argv[3]) if len(sys.argv) > 3 else 0.0) + design()
+    finish(mix, out)
     print('wrote', out)

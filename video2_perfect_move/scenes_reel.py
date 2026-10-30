@@ -36,10 +36,10 @@ SRC2 = os.path.join(C.ROOT, 'src2')
 CLEAN = os.environ.get('CLEAN') == '1'          # textless version
 
 # ------------------------------------------------------------------ beat grid (SNAP): Mixkit "Epic Games" (#76)
-BEATS = json.load(open(os.path.join(HERE, 'beats_76.json')))
-MUSIC_FILE_OFFSET = BEATS['offset']               # track time at video 0.0 (its drop lands on 24.0)
+BEATS = json.load(open(os.path.join(HERE, 'beats_706.json')))   # Mixkit "Games Music" (#706), 139.7 BPM
+MUSIC_FILE_OFFSET = BEATS['offset']               # track time at video 0.0 (its lift lands on 24.0)
 SHIFT = 0.0
-VBEATS = np.array(BEATS['grid'])                  # steady 105.5 BPM grid pinned on the drop
+VBEATS = np.array(BEATS['grid'])                  # steady grid pinned on the lift
 
 
 def S(t):
@@ -67,7 +67,13 @@ class Seq:
         return img.astype(np.float32) / 255.0
 
     def at(self, t):
-        return self.frame(int(round(t * self.fps)))
+        """Frame-blended sampling: slowed clips stay smooth at a constant 30 fps (no repeated-frame judder)."""
+        x = max(0.0, t * self.fps)
+        i = int(x)
+        k = x - i
+        if k < 0.02 or i + 1 >= self.n:
+            return self.frame(i)
+        return self.frame(i) * (1 - k) + self.frame(i + 1) * k
 
 
 @functools.lru_cache(maxsize=None)
@@ -120,13 +126,12 @@ def edge_mask():
 
 # ------------------------------------------------------------------ timeline (nominal -> snapped)
 N = {  # nominal cut times (snapped to the beat grid)
-    'h1': 0.5, 'h2': 1.8, 'p1': 3.0, 'p1m': 5.0, 'p1a': 7.0, 'p2': 8.5, 'p2a': 10.5, 'p3': 12.5, 'hit': 14.5,
-    'wct': 15.5, 'react': 17.5, 'l8': 19.0, 'c097': 20.5, 'fcp': 22.0, 'burn': 23.0, 'cx': 24.0, 'thr1': 25.5,
-    'thr2': 26.75, 'logo': 28.0,
+    'h1': 0.4, 'h2': 1.7, 'p1': 3.0, 'p1a': 6.9, 'p2': 8.6, 'p2a': 10.3, 'join': 12.4, 'p3': 15.9, 'hit': 17.6,
+    'wct': 18.85, 'l8': 20.6, 'cx': 24.0, 'thr1': 25.7, 'thr2': 27.0, 'share': 28.3, 'logo': 30.4,
 }
 K = {k: S(v) for k, v in N.items()}
-K['card'] = 30.0                                         # logo 27.97-30.0, end card 30.0-34.0 (no gap)
-DURATION = 34.0
+K['card'] = K['logo'] + 2.0                              # logo 2 s, then the end card 4 s (no gap)
+DURATION = round((K['card'] + 4.0) * FPS) / FPS
 STOP = K['hit'] - 0.25
 # ------------------------------------------------------------------ phone mockup in a dark 3D arena (trailer Device)
 C.SRC_W, C.SRC_H = 1920, 1080          # the phone screen is 16:9; recordings are fitted inside it untouched
@@ -241,99 +246,235 @@ def tilt_in(lt, d, yaw0, z0, push=1.10, settle=1.2):
     return yaw, z0 / zoom
 
 
+def remap_t(lt, keys):
+    return C.remap(lt, keys)
+
+
+def burst(f, cx, cy, k, col, r=260, gain=0.9):
+    """Soft landing / capture glow: a radial bloom in the army colour that eases out (no flicker)."""
+    if k <= 0 or k >= 1:
+        return
+    yy, xx = np.ogrid[0:H, 0:W]
+    rr = P(r) * (0.6 + 0.8 * eo3(k))
+    d2 = ((xx - cx) ** 2 + (yy - cy) ** 2) / rr ** 2
+    a = math.sin(math.pi * min(1.0, k * 1.6)) ** 2 if k < 0.31 else (1 - k) / 0.69
+    f += (np.exp(-d2 * 2.2) * a * gain)[..., None] * (np.array(col, np.float32) / 255.0)
+
+
+def full(name, src, foc, z):
+    """Gameplay full-screen (9:16 cover): no inset, no device frame, no empty bands."""
+    return frame_from(name, src, foc, z)
+
+
 def shots():
-    """(start, end, draw(local_t, t) -> frame, dissolve-in s). Hard cuts on the beat; no shot holds one angle > 3 s."""
+    """(start, end, draw(local_t, t) -> frame, dissolve-in s). Hard cuts on the beat."""
     k_ = K
     out = []
-    RED, GREEN, GREY = (1.0, 0.35, 0.2), (0.3, 1.0, 0.4), (0.8, 0.85, 0.95)
 
-    # 1 HOOK: low angle on the real board, push-in 1.00 -> 1.08 per framing (fade in 0.25 handled in render)
-    out.append((0.0, k_['h1'], lambda lt, t: frame_from('hook', 0.6 + lt * 0.85, (0.50, 0.55), lerp(1.0, 1.02, lt / 0.6)), 0))
-    out.append((k_['h1'], k_['h2'], lambda lt, t: frame_from('hook', 1.0 + lt * 0.85, (0.47, 0.42),
-                                                           lerp(1.12, 1.20, eio(lt / 1.1))), 0))
-    out.append((k_['h2'], k_['p1'], lambda lt, t: frame_from('hook', 2.2 + lt * 0.85, (0.45, 0.70),
-                                                           lerp(1.40, 1.51, eio(lt / 1.5))), 0))
+    # 1 HOOK: the figure sits below the headline (picture lowered over the real starfield, top kept clean)
+    def hook(s0, foc, z0, z1, d):
+        def fn(lt, t):
+            img = seq('hook').at(s0 + lt * 0.85)
+            pic = C.cover(img, focus=foc, zoom=lerp(z0, z1, eio(lt / d)), dy=P(1150), border=cv2.BORDER_CONSTANT)
+            yy = np.arange(H, dtype=np.float32)
+            m = np.clip((yy - P(1150) + P(60)) / P(520), 0, 1)[:, None, None] ** 1.5
+            return arena_bg(t) * 0.8 * (1 - m) + (sharpen(pic) * 0.95 + 0.025) * m
+        return fn
+    out.append((0.0, k_['h1'], hook(0.6, (0.50, 0.30), 1.0, 1.03, 0.6), 0))
+    out.append((k_['h1'], k_['h2'], hook(1.0, (0.47, 0.30), 1.08, 1.15, 1.3), 0))
+    out.append((k_['h2'], k_['p1'], hook(2.2, (0.45, 0.40), 1.25, 1.33, 1.3), 0))
 
-    # 2 FIRE RED, BEFORE: phone tilts in (18 -> 0) and settles front-on, then the camera pushes in
-    d = k_['p1m'] - k_['p1']
-    def p1_before(lt, t):
-        yaw, z = tilt_in(lt, d, 18, 1.95)
-        return mock('g1', 0.25 + lt * (2.6 / d), [0, 0, z, yaw, 6, 0], (0.40, 0.52), (1080, HERO_Y), t, RED,
-                    spot=(0.36, 0.5), spot_r=700, spot_k=0.25)
-    out.append((k_['p1'], k_['p1m'], p1_before, 0))
-
-    # 2 FIRE RED, MOVE: whole phone kept in frame (player names fully visible), slow push, spotlight on the piece
-    d_m = k_['p1a'] - k_['p1m']
+    # 2 FIRE RED move, full-screen gameplay: selection, slow-motion slide (real fire trail), camera pushes in on
+    #   the move and follows the piece, soft glow burst on landing
+    d1 = k_['p1a'] - k_['p1']
+    KEYS1 = [(0.0, 0.3), (1.2, 3.7), (3.3, 5.2), (d1, 5.65)]
+    LAND1 = 1.2 + (5.1 - 3.7) / (5.2 - 3.7) * 2.1
     def p1_move(lt, t):
-        k = eio(lt / d_m)
-        src = 2.85 + (lt * 0.9 if lt < 0.8 else 0.72 + (lt - 0.8) * (2.0 / max(d_m - 0.8, 0.1)))
+        src = remap_t(lt, KEYS1)
         u = eio(seg(src, 3.9, 5.1))
         piece = (lerp(0.35, 0.45, u), lerp(0.47, 0.70, u))
-        return mock('g1', src, [0, 0, lerp(1.76, 1.66, k), 0, 6, 0], (0.5, 0.5), (1080, HERO_Y), t, RED,
-                    spot=piece, spot_r=600, spot_k=0.5)
-    out.append((k_['p1m'], k_['p1a'], p1_move, 0))
+        z = lerp(1.05, 1.45, eio(seg(lt, 1.0, 2.2)))                     # push-in on the move
+        foc = (lerp(0.40, piece[0], eio(seg(lt, 1.0, 2.2))), lerp(0.52, piece[1], eio(seg(lt, 1.0, 2.2))))
+        f = full('g1', src, foc, z)
+        cx, cy = to_out('g1', foc, z, piece)
+        f = spotlight(f, cx, cy, P(520), 0.45)
+        burst(f, cx, cy, (lt - LAND1) / 0.7, ARMY['FIRE RED'], r=300, gain=0.8)
+        return f
+    out.append((k_['p1'], k_['p1a'], p1_move, 0))
 
-    # --- zoomed animation clips, no device frame: red pieces, blue knight, overhead board (push/zoom)
-    def anim(name, s0, sp, foc, z0, z1):
-        def fn(lt, t, name=name, s0=s0, sp=sp, foc=foc, z0=z0, z1=z1):
-            d = 1.8
-            return frame_from(name, s0 + lt * sp, foc, lerp(z0, z1, eio(min(lt / d, 1.0))))
+    # zoomed animation clips, no device: red pieces, blue knight, overhead board (ease-in-out push over the
+    # whole shot; frame-blended; light temporal smoothing on the fire so its glow does not flicker)
+    def anim(name, s0, sp, foc, z0, z1, d, smooth=False):
+        def fn(lt, t):
+            f = frame_from(name, s0 + lt * sp, foc, lerp(z0, z1, eio(lt / d)))
+            if smooth:
+                f = f * 0.6 + frame_from(name, s0 + (lt - 1.0 / FPS) * sp, foc, lerp(z0, z1, eio((lt - 1.0 / FPS) / d))) * 0.4
+            return f
         return fn
-    out.append((k_['p1a'], k_['p2'], anim('fcp', 0.1, 0.9, (0.5, 0.55), 1.0, 1.14), 0))       # MOVE PLAYED: FIRE RED pieces
+    out.append((k_['p1a'], k_['p2'], anim('fcp', 0.1, 0.9, (0.5, 0.55), 1.0, 1.12, k_['p2'] - k_['p1a'], True), 0))
     def knight(lt, t):
+        d = k_['p2a'] - k_['p2']
         f = cv2.resize(seq('c096').at(0.1 + lt * 0.8), (W, H), interpolation=cv2.INTER_AREA)
-        return sharpen(C.cover(f, zoom=lerp(1.0, 1.14, eio(lt / 1.7)))) * 0.95 + 0.025
-    out.append((k_['p2'], k_['p2a'], knight, 0))                                              # THEN PLAYER 2: blue knight
-    out.append((k_['p2a'], k_['p3'], anim('top', 1.0, 0.6, (0.5, 0.56), 1.0, 1.10), 0))       # Ok... still fine: overhead
+        return sharpen(C.cover(f, zoom=lerp(1.0, 1.12, eio(lt / d)))) * 0.95 + 0.025
+    out.append((k_['p2'], k_['p2a'], knight, 0))
+    out.append((k_['p2a'], k_['join'], anim('top', 1.0, 0.6, (0.5, 0.56), 1.0, 1.08, k_['join'] - k_['p2a']), 0))
 
-    # --- real gameplay, full board, no mockup (band over a blurred fill of the same footage, no dead space)
-    def board(name, s0, sp, foc, z0, z1, d, pin_left=False):
-        def fn(lt, t, name=name, s0=s0, sp=sp, foc=foc, z0=z0, z1=z1, d=d):
-            z = lerp(z0, z1, eio(lt / d))
-            fx = 0.5 / z if pin_left else foc[0]          # pin the left edge: the player list is never cut
-            return frame_from(name, s0 + lt * sp, (fx, foc[1]), z, band=True, dy=P(460))
-        return fn
+    # THEY JOIN: pieces assemble on the board
+    out.append((k_['join'], k_['p3'], assemble, 0))
+
+    # 6 AIR GREY, full-screen gameplay: approach, camera pushes in toward the capture square
     d6 = k_['hit'] - k_['p3']
-    out.append((k_['p3'], k_['hit'], board('tra', 3.0, 2.3 / d6, (0.47, 0.50), 1.30, 1.40, d6), 0))        # AIR GREY approaches
-    out.append((k_['hit'], k_['wct'], board('tra', 5.30, 0.29, (0.40, 0.46), 1.55, 1.60, 1.14), 0))         # WAIT.: the capture
-    d7 = k_['react'] - k_['wct']
-    out.append((k_['wct'], k_['react'], board('tra', 8.48, 0.2, (0.47, 0.50), 1.40, 1.30, d7), 0))          # cleared board
-    # 7 cut-back to the FIRE RED player (no text)
-    out.append((k_['react'], k_['l8'], lambda lt, t: frame_from('react', lt * 0.13, (0.40, 0.47),
-                                                                lerp(1.0, 1.10, eio(lt / 1.5))), 0))
+    def p3_in(lt, t):
+        k = eio(lt / d6)
+        return full('tra', 3.0 + lt * (2.25 / d6), (lerp(0.47, 0.38, k), lerp(0.50, 0.45, k)), lerp(1.05, 1.30, k))
+    out.append((k_['p3'], k_['hit'], p3_in, 0))
 
-    # 8 YOUR PERFECT MOVE...: real gameplay, second half of Quess gameplay (1): AIR GREY pawn selected, moves +2
+    # 7 WAIT.: the real capture, slow motion, board readable; glow burst on the capture (render adds the flash)
+    def capture(lt, t):
+        foc, z = (0.38, 0.45), lerp(1.30, 1.36, lt)
+        f = full('tra', 5.30 + lt * 0.29, foc, z)
+        cx, cy = to_out('tra', foc, z, (0.36, 0.44))
+        burst(f, cx, cy, lt / 0.9, (230, 235, 255), r=330, gain=0.7)
+        burst(f, cx, cy, lt / 0.6, (40, 110, 255), r=200, gain=0.5)
+        return f
+    out.append((k_['hit'], k_['wct'], capture, 0))
+    d7 = k_['l8'] - k_['wct']
+    out.append((k_['wct'], k_['l8'], lambda lt, t: full('tra', 8.48 + lt * 0.2, (0.45, 0.50),
+                                                        lerp(1.25, 1.12, eio(lt / d7))), 0))
+
+    # 8 YOUR PERFECT MOVE...: AIR GREY pawn selected, slides +2 in slow motion; push-in on the move, landing glow
     d8 = k_['cx'] - k_['l8']
-    out.append((k_['l8'], k_['cx'], board('g1b', 0.5, 3.1 / d8, (0.5, 0.52), 1.0, 1.10, d8, pin_left=True), 0))
-    # climax: the rich low-angle board with the WATER BLUE portal (same recording), push
-    out.append((k_['cx'], k_['thr1'], board('g1b', 6.4, 1.0, (0.5, 0.55), 1.05, 1.14, 1.7, pin_left=True), 0))
-    # THREE OPPONENTS. / MORE THAN ONE MOVE TO WATCH.: the four players, two framings
-    out.append((k_['thr1'], k_['thr2'], lambda lt, t: frame_from('thr', 1.8 + lt, (0.5, 0.62), lerp(1.0, 1.06, lt / 1.3)), 0))
-    out.append((k_['thr2'], k_['logo'], lambda lt, t: frame_from('thr', 3.47 + lt * 0.76, (0.40, 0.58),
-                                                                lerp(1.3, 1.38, lt / 1.3)), 0))
+    KEYS8 = [(0.0, 0.6), (0.8, 1.2), (2.8, 3.0), (d8, 3.4)]
+    def p8(lt, t):
+        src = remap_t(lt, KEYS8)
+        z = lerp(1.10, 1.42, eio(seg(lt, 0.7, 1.8)))
+        foc = (0.49, lerp(0.60, 0.58, eio(seg(lt, 0.7, 1.8))))
+        f = full('g1b', src, foc, z)
+        cx, cy = to_out('g1b', foc, z, (0.49, 0.56))
+        burst(f, cx, cy, (lt - 2.7) / 0.7, ARMY['AIR GREY'], r=280, gain=0.6)
+        return f
+    out.append((k_['l8'], k_['cx'], p8, 0))
+    out.append((k_['cx'], k_['thr1'], lambda lt, t: full('g1b', 6.4 + lt, (0.52, 0.62), lerp(1.05, 1.16, eio(lt / 1.7))), 0))
+    out.append((k_['thr1'], k_['thr2'], lambda lt, t: frame_from('thr', 1.8 + lt, (0.5, 0.62), lerp(1.0, 1.06, eio(lt / 1.1))), 0))
+    out.append((k_['thr2'], k_['share'], lambda lt, t: frame_from('thr', 3.47 + lt * 0.76, (0.40, 0.58),
+                                                                 lerp(1.3, 1.38, eio(lt / 1.2))), 0))
+    # SHARE IT WITH YOUR FRIENDS: clean starry CTA, three equal circles pop in one by one, names below
+    out.append((k_['share'], k_['logo'], share, 0))
 
-    # logo alone: the real Quess Q (from the outro), scale 0.6 -> 1.0 over 0.8 s, fade out 0.2 s
+    # logo alone: the full Quess Q, scale 0.6 -> 1.0 over 0.8 s
     def logo(lt, t):
         f = arena_bg(t) * 0.8
-        lg = cv2.imread(os.path.join(SRC2, 'lock', 'quess_q_logo.png'), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
-        d = K['card'] - K['logo']
-        s_ = lerp(0.6, 1.0, eo3(lt / 0.8)) * 0.55 * W / lg.shape[1]      # full Q, w=0.55, never cropped
-        a = clamp01(lt / 0.15)
-        C.place(f, lg, W / 2, H * 900 / 1920, s_, a)
+        lg = still_lock('quess_q_logo.png')
+        s_ = lerp(0.6, 1.0, eo3(lt / 0.8)) * 0.55 * W / lg.shape[1]
+        C.place(f, lg, W / 2, H * 900 / 1920, s_, clamp01(lt / 0.15))
         return f
     out.append((k_['logo'], K['card'], logo, 0))
 
-    # end card 30.0-35.0: real lockup (wordmark, AVAILABLE ON, badges, URL) fades in 0.3 s, then static
     def card(lt, t):
         f = arena_bg(0.0) * 0.8
         lk = still('lockup.png')
-        a = 1.0                                  # straight cut from the logo: no black frame
         lk4 = np.dstack([lk[..., :3], np.ones(lk.shape[:2], np.float32)])
-        C.place(f, lk4, W / 2, P(HERO_Y), W * 0.98 / lk.shape[1], a)
+        C.place(f, lk4, W / 2, P(HERO_Y), W * 0.98 / lk.shape[1], 1.0)
         return f
     out.append((K['card'], DURATION, card, 0))
-    MOCK.update({3, 4})          # only two mockup shots (p1 before + move), 3.96 s in total
     return out
+
+
+@functools.lru_cache(maxsize=None)
+def still_lock(name):
+    return cv2.imread(os.path.join(SRC2, 'lock', name), cv2.IMREAD_UNCHANGED).astype(np.float32) / 255.0
+
+
+@functools.lru_cache(maxsize=None)
+def piece_sprite(name, hpx):
+    im = still(name)
+    s_ = hpx / im.shape[0]
+    return cv2.resize(im, (max(2, int(im.shape[1] * s_)), int(hpx)), interpolation=cv2.INTER_AREA)
+
+
+@functools.lru_cache(maxsize=None)
+def tag_img(lines, size=34):
+    tm, _, _ = T._mask(tuple(lines), size * 2, gap=0.35)
+    return T._compose(tm, np.zeros_like(tm), 0.8)
+
+
+JOIN = [  # (sprite, name, army, colour, start (s into the beat), from (1080 coords), to)
+    ('piece_fire_red.png', 'TELLER', 'FIRE RED', ARMY['FIRE RED'], 0.5, (-260, 480), (330, 800)),
+    ('piece_earth_green.png', 'JOHN GREEN', 'EARTH GREEN', ARMY['EARTH GREEN'], 1.2, (1340, 480), (750, 800)),
+    ('piece_water_blue.png', 'JACKY', 'WATER BLUE', ARMY['WATER BLUE'], 1.9, (-260, 1750), (330, 1225)),
+    ('piece_air_grey.png', 'OPIE', 'AIR GREY', ARMY['AIR GREY'], 2.6, (1340, 1750), (750, 1225)),
+]
+SLIDE = 0.55
+
+
+def assemble(lt, t):
+    """THEY JOIN: the real rendered pieces slide in from their corners (eased, glow trail), land with a soft
+    burst in their army colour, then their name tags fade in. Base: the real top-down board, slow push-in."""
+    d = K['p3'] - K['join']
+    f = frame_from('top', 1.0 + lt * 0.5, (0.5, 0.56), lerp(1.0, 1.10, eio(lt / d))) * 0.42 + arena_bg(t) * 0.25
+    U = W / 1080.0
+    hpx = int(280 * U)
+    for name, who, army, col, ts, p0, p1 in JOIN:
+        k = (lt - ts) / SLIDE
+        if k <= 0:
+            continue
+        spr = piece_sprite(name, hpx)
+        if k < 1:                                                        # glow trail: eased ghost copies
+            for j, back in enumerate((0.20, 0.13, 0.07)):
+                kb = eio(max(0.0, k - back / SLIDE * 0.5))
+                x, y = lerp(p0[0], p1[0], kb) * U, lerp(p0[1], p1[1], kb) * U
+                g = spr.copy()
+                g[..., :3] = g[..., :3] * 0.3 + np.array(col, np.float32) / 255 * 0.7
+                C.place(f, g, x, y, 1.0, 0.28 - j * 0.08)
+        e = eio(min(k, 1.0))
+        x, y = lerp(p0[0], p1[0], e) * U, lerp(p0[1], p1[1], e) * U
+        if k >= 1:                                                       # steady halo once on the board
+            burst(f, x, y + 40 * U, 0.5, col, r=200, gain=0.35)
+        burst(f, x, y + 60 * U, (k - 1.0) * SLIDE / 0.6, col, r=240, gain=0.7)
+        C.place(f, spr, x, y, 1.0, 1.0)
+        a = clamp01((lt - ts - SLIDE - 0.05) / 0.25)
+        if a > 0 and not CLEAN:
+            C.place(f, tag_img((who, army)), x, y + 175 * U, 1.0, a)
+    return f
+
+
+SHARE = [('card_john_green_earth_green.png', 'JOHN GREEN', 220), ('card_jacky_water_blue.png', 'JACKY', 540),
+         ('card_opie_air_grey.png', 'OPIE', 860)]
+
+
+@functools.lru_cache(maxsize=None)
+def avatar(name, dpx):
+    im = still_lock(name)
+    h, w = im.shape[:2]
+    side = int(0.46 * w)
+    x0, y0 = (w - side) // 2, int(0.12 * h)
+    c = cv2.resize(im[y0:y0 + side, x0:x0 + side, :3], (dpx, dpx), interpolation=cv2.INTER_AREA)
+    c = np.clip(c * 1.9 + 0.04, 0, 1)                                    # brighten: every avatar clearly readable
+    c = np.clip(c + (c - cv2.GaussianBlur(c, (0, 0), 1.5)) * 0.6, 0, 1)
+    yy, xx = np.mgrid[0:dpx, 0:dpx].astype(np.float32)
+    r = np.sqrt((xx - dpx / 2) ** 2 + (yy - dpx / 2) ** 2)
+    disc = np.clip(dpx / 2 - 2 - r, 0, 1)
+    ring = np.clip(1 - np.abs(r - (dpx / 2 - 3)) / 2.5, 0, 1)
+    gold = np.array(C.GOLD_RGB[::-1], np.float32) / 255
+    rgb = c * (1 - ring[..., None]) + gold * ring[..., None]
+    return np.dstack([rgb, np.maximum(disc, ring)]).astype(np.float32)
+
+
+def share(lt, t):
+    """SHARE IT WITH YOUR FRIENDS: clean dark starry background, three equal circles pop in one by one,
+    each with its name below."""
+    f = arena_bg(t) * 0.85
+    U = W / 1080.0
+    d = int(250 * U)
+    for i, (name, who, x) in enumerate(SHARE):
+        k = (lt - 0.15 - i * 0.35) / 0.3
+        if k <= 0:
+            continue
+        sc = 1 + 1.7 * (min(k, 1) - 1) ** 3 + 0.7 * (min(k, 1) - 1) ** 2      # pop (ease-out-back)
+        C.place(f, avatar(name, d), x * U, 1060 * U, max(0.05, sc), clamp01(k * 2))
+        if not CLEAN:
+            C.place(f, tag_img((who,), 36), x * U, (1060 + 175) * U, 1.0, clamp01((k - 0.6) * 2.5))
+    return f
 
 
 def ei(x):
@@ -346,20 +487,23 @@ TEXT = [  # (t0, t1, kind, lines, fx): every text change is a hard cut on a beat
     (K['h1'], K['h2'], 'narr', ('WHEN YOU', 'FINALLY FIND'), 'reveal'),
     (K['h2'], K['p1'], 'narr', ('THE PERFECT', 'MOVE...'), 'reveal'),
     (K['p1'], K['p1a'], 'thought', ('I know exactly', 'what to do.'), 'reveal'),
-    (K['p1a'], K['p2'], 'narr', ('MOVE PLAYED.',), 'glow'),
+    (K['p1a'], K['p2'], 'narr', ('MOVE PLAYED.',), 'reveal'),
     (K['p2'], K['p2a'], 'narr', ('THEN PLAYER 2', 'MOVES.'), 'reveal'),
-    (K['p2a'], K['p3'], 'thought', ('Ok... still fine.',), 'reveal'),
+    (K['p2a'], K['join'], 'thought', ('Ok... still fine.',), 'reveal'),
+    (K['join'], K['p3'], 'narr', ('THEY JOIN',), 'reveal'),
     (K['p3'], K['hit'], 'narr', ('THEN PLAYER 3', 'MOVES.'), 'reveal'),
     (K['hit'], K['wct'], 'narr', ('WAIT.',), 'hard'),
-    (K['wct'], K['react'], 'narr', ('THAT', 'CHANGES', 'EVERYTHING.'), 'hard'),
+    (K['wct'], K['l8'], 'narr', ('THAT', 'CHANGES', 'EVERYTHING.'), 'hard'),
     (K['l8'], K['cx'], 'narr', ('YOUR PERFECT', 'MOVE...'), 'wipe'),
     (K['cx'], K['thr1'], 'narr', ('JUST GOT', 'COMPLICATED.'), 'hard'),
     (K['thr1'], K['thr2'], 'narr', ('THREE', 'OPPONENTS.'), 'reveal'),
-    (K['thr2'], K['logo'], 'narr', ('MORE THAN', 'ONE MOVE', 'TO WATCH.'), 'reveal'),
+    (K['thr2'], K['share'], 'narr', ('MORE THAN', 'ONE MOVE', 'TO WATCH.'), 'reveal'),
+    (K['share'], K['logo'], 'narr', ('SHARE IT WITH', 'YOUR FRIENDS'), 'reveal'),
 ]
-TURNS = [(K['p1'], 'FIRE RED'), (K['p2'], 'EARTH GREEN'), (K['p3'], 'AIR GREY')]
+TURNS = [(K['p1'], 'FIRE RED'), (K['p2'], 'WATER BLUE'), (K['p3'], 'AIR GREY')]
 OPP_FLASH = [(K['thr1'], 'WATER BLUE'), (K['thr1'] + 0.4, 'AIR GREY'), (K['thr1'] + 0.8, 'EARTH GREEN')]
-MONTAGE_HITS = [K['l8'], K['cx']]
+MONTAGE_HITS = [K['cx']]
+LAND1_T = K['p1'] + 1.2 + (5.1 - 3.7) / (5.2 - 3.7) * 2.1          # FIRE RED piece lands (for the tick SFX)
 
 
 @functools.lru_cache(maxsize=None)
@@ -482,32 +626,41 @@ def picture(t):
     return fn(t - a, t)
 
 
+@functools.lru_cache(maxsize=None)
+def spark_mask():
+    """Sparkles stay in the background: zero in the headline zone (y 180-560 at 1080), soft edges."""
+    yy = np.arange(H, dtype=np.float32) / H * 1920
+    m = 1 - np.clip(1 - np.maximum(180 - yy, yy - 560) / 80, 0, 1)
+    return m[:, None, None].astype(np.float32)
+
+
 def render(t):
     f = picture(t)
-    if shot_at(t) in MOCK and shot_at(t - 0.5 / FPS) == shot_at(t):     # slight motion blur on the moving phone
-        f = (f + picture(t - 0.5 / FPS)) * 0.5
-    for t0, army in TURNS + OPP_FLASH:                                 # army-colour edge flash + sweep behind the headline
-        if t0 <= t < t0 + 0.8:
-            k = t - t0
-            f += edge_mask() * (np.array(ARMY[army], np.float32) / 255.0) * 0.55 * math.exp(-k / 0.3)
+    for t0, army in TURNS + OPP_FLASH:                                 # army-colour edge glow: eased in and out
+        if t0 <= t < t0 + 0.9:
+            k = (t - t0) / 0.9
+            env = math.sin(math.pi * min(1.0, k / 0.25) / 2) ** 2 * (1 - eio(seg(k, 0.25, 1.0)))
+            f += edge_mask() * (np.array(ARMY[army], np.float32) / 255.0) * 0.45 * env
             if (t0, army) in TURNS:
-                T.army_sweep(f, ARMY[army], eio(k / 0.8), cy=HEAD_CY)
+                T.army_sweep(f, ARMY[army], eio(k), cy=HEAD_CY)
     for th in MONTAGE_HITS:
-        if 0 <= t - th < 0.12:
-            f = f * (1 + 0.5 * (1 - (t - th) / 0.12))
+        if 0 <= t - th < 0.2:
+            f = f * (1 + 0.35 * math.sin(math.pi * (t - th) / 0.2))
     hit = K['hit']
-    if 0 <= t - hit < 0.4:                                             # capture burst: flash 0.08 + fade 0.17, shake
+    if 0 <= t - hit < 0.4:                                             # capture: soft flash + short shake
         k = t - hit
-        f = f * (1 + 0.5 * (1.0 if k < 0.08 else max(0.0, 1 - (k - 0.08) / 0.17)))
-        amp = P(14) * math.exp(-k / 0.12)
+        f = f * (1 + 0.35 * math.sin(math.pi * min(1.0, k / 0.25)))
+        amp = P(12) * math.exp(-k / 0.12)
         M = np.float32([[1, 0, amp * math.sin(k * 70)], [0, 1, amp * 0.6 * math.cos(k * 53)]])
         f = cv2.warpAffine(f, M, (W, H), borderMode=cv2.BORDER_REFLECT)
     end = t >= K['card']
     if t < K['logo']:
         f *= top_bed()
     if not end:
-        EMB.draw(f, t)
-        BOKEH.draw(f, t, ox=-t * 30)
+        sp = np.zeros_like(f)
+        EMB.draw(sp, t)
+        BOKEH.draw(sp, t, ox=-t * 30)
+        f += sp * spark_mask()
     f = C.grade(f, t, sat=1.12, leak=0.0 if end else 0.06, vig=0.3 if end else 0.62, grain=0.0 if end else 0.012,
                 bloom=0.15 if end else 0.38)
     draw_text(f, t)
